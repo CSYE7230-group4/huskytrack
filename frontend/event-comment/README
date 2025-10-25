@@ -1,0 +1,5 @@
+**Use the following command to run, vaul@0.9.9 peer only supports React ≤ 18 this command is to temporarily ignore peer dependencies**
+rmdir /s /q node_modules  2>nul
+del package-lock.json      2>nul
+npm install --legacy-peer-deps
+npm run dev -- -p 3005
