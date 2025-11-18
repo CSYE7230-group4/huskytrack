@@ -1,6 +1,12 @@
+/**
+ * User Model
+ * Defines the User schema and methods
+ */
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// User schema
 const userSchema = new mongoose.Schema({
     firstName: {
         type: String,
