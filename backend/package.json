@@ -7,6 +7,9 @@
     "start": "node server.js",
     "dev": "node server.js",
     "dev:verbose": "DEBUG=* node server.js",
+    "db:seed": "node src/config/seeders/index.js seed",
+    "db:clear": "node src/config/seeders/index.js clear",
+    "db:reset": "node src/config/seeders/index.js reset",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
