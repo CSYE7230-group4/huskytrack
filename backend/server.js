@@ -77,15 +77,8 @@ app.use((req, res, next) => {
 })
 
 // Global error handler
-app.use((err, req, res, next) => {
-    console.error("ERROR: ", err.message);
-
-    res.status(err.status || 500).json({
-        success: false,
-        message: err.message || "Internal server error",
-        ...(process.env.NODE_ENV === 'development' && {stack: err.stack1})
-    });
-});
+const { errorHandler } = require('./src/utils/errors');
+app.use(errorHandler);
 
 // Start server and connect to database
 const startServer = async () => {
