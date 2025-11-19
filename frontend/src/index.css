@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* OPTIONAL — Global defaults */
+/* Global defaults */
 body {
   @apply bg-background text-dark font-primary;
 }
