@@ -9,23 +9,25 @@ export default function ResetSuccess() {
       subtitle="Your password has been reset successfully."
     >
       <div className="space-y-6">
-        {/* Success message box */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-4 text-sm text-gray-600">
-          <p className="font-semibold text-gray-800 mb-1">
-            Password Reset Successful!
+
+        {/* Success box */}
+        <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-4 text-sm text-gray-600">
+          <p className="font-medium text-gray-800 mb-1">
+            Your password was reset successfully!
           </p>
           <p>
-            You can now log in using your new password and continue exploring events
-            on HuskyTrack.
+            You can now log in using your new password and continue exploring
+            events on HuskyTrack.
           </p>
         </div>
 
-        {/* Back to login */}
+        {/* Back to login button */}
         <Button className="w-full">
-          <Link to="/auth/login" className="block w-full text-center">
+          <Link to="/auth/login" className="w-full block text-center text-white">
             Back to Login
           </Link>
         </Button>
+
       </div>
     </AuthPageLayout>
   );
