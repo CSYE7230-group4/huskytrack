@@ -12,7 +12,7 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
-import ResetSuccess from "../pages/auth/ResetSuccess";
+import ResetSuccess from "../pages/ResetSuccess";
 
 const router = createBrowserRouter([
   // AUTH ROUTES
