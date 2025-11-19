@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random Page Generator 🚀</title>
+  <style>
+    :root {
+      --fg: #111;
+      --card-bg: rgba(255,255,255,0.85);
+    }
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:background 800ms ease;
+      color:var(--fg);
+    }
+    .container{
+      width:min(920px,92%);
+      max-width:920px;
+      padding:28px;
+      border-radius:18px;
+      background:var(--card-bg);
+      box-shadow:0 12px 30px rgba(17,17,17,0.12);
+      backdrop-filter: blur(6px);
+    }
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:1.6rem;margin:0;letter-spacing:-0.4px}
+    .controls{display:flex;gap:8px;align-items:center}
+    button{
+      background:#111;color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;
+      box-shadow:0 6px 14px rgba(17,17,17,0.15);
+    }
+    button.ghost{background:transparent;color:var(--fg);border:1px solid rgba(17,17,17,0.06)}
+    .main{
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:18px;
+      margin-top:20px;
+    }
+    .panel{
+      padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.6),rgba(255,255,255,0.55));
+      box-shadow:0 8px 18px rgba(17,17,17,0.06);
+      min-height:220px;
+    }
+    .art{display:flex;align-items:center;justify-content:center;font-size:64px;gap:12px;flex-wrap:wrap}
+    .quote{font-size:1.05rem;line-height:1.5;color:#222}
+    .meta{font-size:0.85rem;color:#444;margin-top:12px}
+    .shapes{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    .shape{
+      width:56px;height:56px;border-radius:12px;display:grid;place-items:center;font-weight:700;
+      color:white;box-shadow:0 6px 14px rgba(17,17,17,0.08);
+    }
+    footer{margin-top:14px;color:#333;font-size:0.9rem;display:flex;justify-content:space-between;align-items:center}
+    small{opacity:0.8}
+    @media (max-width:880px){
+      .main{grid-template-columns:1fr}
+      .art{font-size:48px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header>
+      <h1>Random Page Generator <span title="surprise">✨</span></h1>
+      <div class="controls">
+        <button id="randBtn">Randomize</button>
+        <button class="ghost" id="shareBtn">Copy Snapshot</button>
+      </div>
+    </header>
+
+    <div class="main" aria-live="polite">
+      <section class="panel" id="leftPanel">
+        <div class="art" id="emojiArt" aria-hidden="true">🎲 🎨 🚀</div>
+        <p class="quote" id="quoteText">A random quote will appear here.</p>
+        <div class="meta" id="quoteAuthor">— Unknown</div>
+      </section>
+
+      <aside class="panel" id="rightPanel">
+        <div><strong>Random palette</strong></div>
+        <div class="shapes" id="shapesContainer" aria-hidden="true"></div>
+
+        <div style="margin-top:12px;">
+          <strong>Details</strong>
+          <div style="margin-top:8px;font-size:0.9rem;color:#444" id="details">seed: — | gradient: —</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <small>Made with JavaScript — refresh or press Randomize.</small>
+      <small id="timestamp"></small>
+    </footer>
+  </div>
+
+  <script>
+    // small utilities
+    const rng = (seed) => {
+      // simple seedable PRNG (mulberry32)
+      let t = seed >>> 0;
+      return function() {
+        t += 0x6D2B79F5;
+        let r = Math.imul(t ^ t >>> 15, 1 | t);
+        r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+        return ((r ^ r >>> 14) >>> 0) / 4294967296;
+      };
+    };
+
+    const quotes = [
+      ["Simplicity is the soul of efficiency.","Austin Freeman"],
+      ["Creativity is intelligence having fun.","Albert Einstein"],
+      ["Small steps every day.", "Anonymous"],
+      ["Code is like humor. When you have to explain it, it’s bad.","Cory House"],
+      ["Make it work, make it right, make it fast.","Kent Beck"],
+      ["Ship. Then iterate.","You"],
+      ["Design is the silent ambassador of your brand.","Paul Rand"],
+      ["Every pixel tells a story.","Designer Friend"],
+      ["The best way out is always through.","Robert Frost"]
+    ];
+
+    const emojis = [
+      ["🦅","🏃‍♂️","🌪️"],["🦉","📚","☕"],["🐦","✈️","🧭"],
+      ["🤖","🔧","⚙️"],["🦊","🗺️","🌙"],["🐉","🔥","🏯"],
+      ["🌊","⛵","🌅"],["🚀","✨","🌌"]
+    ];
+
+    function randomGradient(r) {
+      const a = Math.floor(r()*360);
+      const b = Math.floor(r()*360);
+      const g = `linear-gradient(135deg, hsl(${a} 70% 55%), hsl(${b} 65% 60%))`;
+      return {css:g, a, b};
+    }
+
+    function randomPalette(r) {
+      // generate 4 tinted colors using HSL and convert to CSS HSL strings
+      const base = Math.floor(r()*360);
+      const arr = [];
+      for(let i=0;i<4;i++){
+        const hue = (base + i*37 + Math.floor(r()*30)) % 360;
+        const sat = 55 + Math.floor(r()*30);
+        const light = 40 + Math.floor(r()*20);
+        arr.push(`hsl(${hue} ${sat}% ${light}%)`);
+      }
+      return arr;
+    }
+
+    function makeShapes(container, palette, r) {
+      container.innerHTML = '';
+      for(let i=0;i<6;i++){
+        const el = document.createElement('div');
+        el.className = 'shape';
+        el.style.background = palette[i % palette.length];
+        el.textContent = ['A','B','C','D','E','F'][i];
+        el.style.transform = `translateY(${Math.floor((r()-0.5)*20)}px) rotate(${Math.floor((r()-0.5)*30)}deg)`;
+        container.appendChild(el);
+      }
+    }
+
+    function snapshotText(data) {
+      return `Random Snapshot\nseed: ${data.seed}\nquote: "${data.quote}" — ${data.author}\npalette: ${data.palette.join(', ')}\ngradient: a:${data.gradA}, b:${data.gradB}\ncreated: ${new Date().toLocaleString()}`;
+    }
+
+    function applyRandom(seed = Math.floor(Math.random()*1e9)) {
+      const r = rng(seed);
+      const grad = randomGradient(r);
+      document.body.style.background = grad.css;
+
+      const palette = randomPalette(r);
+      document.documentElement.style.setProperty('--card-bg', 'rgba(255,255,255,0.80)');
+
+      // choose a quote and emoji art
+      const q = quotes[Math.floor(r()*quotes.length)];
+      const e = emojis[Math.floor(r()*emojis.length)];
+      document.getElementById('quoteText').textContent = q[0];
+      document.getElementById('quoteAuthor').textContent = `— ${q[1]}`;
+      document.getElementById('emojiArt').textContent = e.join(' ');
+
+      // shapes
+      makeShapes(document.getElementById('shapesContainer'), palette, r);
+
+      // details
+      document.getElementById('details').textContent = `seed: ${seed} | gradient hues: ${grad.a}, ${grad.b}`;
+      document.getElementById('timestamp').textContent = new Date().toLocaleString();
+
+      // animate a small subtle tilt on the container
+      const cont = document.querySelector('.container');
+      cont.animate([
+        { transform: 'translateY(0px) scale(1)' },
+        { transform: 'translateY(-6px) scale(1.005)' },
+        { transform: 'translateY(0px) scale(1)' }
+      ], { duration: 700, easing: 'cubic-bezier(.2,.9,.2,1)' });
+
+      return {seed, quote: q[0], author: q[1], palette, gradA: grad.a, gradB: grad.b};
+    }
+
+    // initial render
+    let lastSnapshot = applyRandom();
+
+    // events
+    document.getElementById('randBtn').addEventListener('click', () => {
+      lastSnapshot = applyRandom();
+    });
+
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+      const txt = snapshotText(lastSnapshot);
+      try {
+        await navigator.clipboard.writeText(txt);
+        document.getElementById('shareBtn').textContent = 'Copied!';
+        setTimeout(()=>document.getElementById('shareBtn').textContent = 'Copy Snapshot', 1400);
+      } catch(e) {
+        alert('Could not copy to clipboard — here is the snapshot:\\n\\n' + txt);
+      }
+    });
+
+    // keyboard shortcut: press R to randomize
+    window.addEventListener('keydown', e => {
+      if(e.key.toLowerCase() === 'r') document.getElementById('randBtn').click();
+    });
+  </script>
+</body>
+</html>
