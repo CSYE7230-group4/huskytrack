@@ -1,24 +1,28 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 
+// MAIN LAYOUTS
 import MainLayout from "../layouts/MainLayout";
+import AuthLayout from "../layouts/AuthLayout";
+
+// MAIN APP PAGES
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
 import Profile from "../pages/Profile";
 
-import AuthLayout from "../layouts/AuthLayout";
-
-// AUTH PAGES (from /pages/auth/)
-import Login from "../pages/auth/Login";
-import Register from "../pages/auth/Register";
-import ForgotPassword from "../pages/auth/ForgotPassword";
-import ResetPassword from "../pages/auth/ResetPassword";
+// AUTH PAGES (new flattened structure)
+import Login from "../pages/Login";
+import Register from "../pages/Register";
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
 const router = createBrowserRouter([
+  // ==========================
   // AUTH ROUTES
+  // ==========================
   {
     path: "/auth",
-    element: <AuthLayout />, // wraps ALL auth screens
+    element: <AuthLayout />,
     children: [
       { index: true, element: <Navigate to="login" /> },
       { path: "login", element: <Login /> },
@@ -29,7 +33,9 @@ const router = createBrowserRouter([
     ],
   },
 
+  // ==========================
   // MAIN APP ROUTES
+  // ==========================
   {
     path: "/",
     element: <MainLayout />,
@@ -40,7 +46,9 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ANY UNKNOWN ROUTE REDIRECTS TO LOGIN
+  // ==========================
+  // FALLBACK ROUTE
+  // ==========================
   {
     path: "*",
     element: <Navigate to="/auth/login" replace />,
