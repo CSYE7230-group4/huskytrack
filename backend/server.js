@@ -4,9 +4,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { success } = require('zod');
 require('dotenv').config();
-const mongoose = require('mongoose');
+
+// Custom imports
+const database = require('./src/config/database');
 
 // Check for required environment variables
 if (!process.env.MONGO_URI) {
@@ -19,16 +20,7 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB connected"))
-    .catch(err => {
-        console.error("MongoDB connection error:", err);
-        process.exit(1);
-    });
-
 const app = express();
-
 const PORT = process.env.PORT || console.error("ERROR: Please specify PORT in env file");
 
 // Middleware
@@ -56,7 +48,20 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.get('/', (req, res) => {
     res.json({
-        message: 'Server is running!',
+        message: 'HuskyTrack API is running!',
+        version: '1.0.0',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Health check endpoint
+app.get('/health', async (req, res) => {
+    const dbHealth = await database.healthCheck();
+    
+    res.status(dbHealth.status === 'healthy' ? 200 : 503).json({
+        status: dbHealth.status === 'healthy' ? 'ok' : 'error',
+        database: dbHealth,
+        uptime: process.uptime(),
         timestamp: new Date().toISOString()
     });
 });
@@ -72,22 +77,26 @@ app.use((req, res, next) => {
 })
 
 // Global error handler
-app.use((err, req, res, next) => {
-    console.error("ERROR: ", err.message);
+const { errorHandler } = require('./src/utils/errors');
+app.use(errorHandler);
 
-    res.status(err.status || 500).json({
-        success: false,
-        message: err.message || "Internal server error",
-        ...(process.env.NODE_ENV === 'development' && {stack: err.stack1})
-    });
-});
+// Start server and connect to database
+const startServer = async () => {
+    try {
+        // Connect to database first
+        await database.connect();
 
-// Shutdown
-process.on('SIGTERM', () => {
-    console.log("SIGTERM received. Shutting down...");
-});
+        // Then start the server
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`Ready to accept requests...`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error.message);
+        process.exit(1);
+    }
+};
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Starting server on ${PORT} ...`);
-});
+// Start the application
+startServer();
