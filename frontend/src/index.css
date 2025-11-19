@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global defaults */
+body {
+  @apply bg-background text-dark font-primary;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+
+/* Headings */
+.h1 {
+  @apply text-4xl font-bold text-dark;
+}
+
+.h2 {
+  @apply text-3xl font-semibold text-dark;
+}
+
+.h3 {
+  @apply text-2xl font-semibold text-dark;
+}
+
+/* Paragraph */
+.p {
+  @apply text-base text-muted leading-relaxed;
+}
