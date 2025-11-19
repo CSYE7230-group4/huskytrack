@@ -110,6 +110,7 @@ This directory contains all Mongoose models and schemas for the HuskyTrack appli
 - `event` (ObjectId ref to Event, required, indexed)
 - `parentComment` (ObjectId ref to Comment, null for top-level)
 - `content` (required, 1-2000 chars)
+- `rating` (Number, optional, 1-5 stars for event reviews)
 - `isEdited`, `editedAt` (track edits)
 - `isFlagged`, `flaggedAt`, `flagReason`, `flaggedBy` (moderation)
 - `isDeleted`, `deletedAt` (soft delete)
