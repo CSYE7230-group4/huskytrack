@@ -42,6 +42,25 @@ export default function MainLayout() {
               </span>
             </div>
 
+            {/* User Section */}
+            {user && (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  Logout
+                </Button>
+              </div>
+            )}
+
           </div>
         </header>
 
