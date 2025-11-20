@@ -26,6 +26,16 @@ class BadRequestError extends ApiError {
 }
 
 /**
+ * 400 Validation Error
+ * Alias for BadRequestError with validation-specific message
+ */
+class ValidationError extends BadRequestError {
+    constructor(message = 'Validation failed', errors = null) {
+        super(message, errors);
+    }
+}
+
+/**
  * 401 Unauthorized
  */
 class UnauthorizedError extends ApiError {
@@ -217,6 +227,7 @@ const errorHandler = (err, req, res, next) => {
 module.exports = {
     ApiError,
     BadRequestError,
+    ValidationError,
     UnauthorizedError,
     ForbiddenError,
     NotFoundError,

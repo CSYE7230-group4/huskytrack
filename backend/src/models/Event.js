@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const EventStatus = {
   DRAFT: 'DRAFT',
   PUBLISHED: 'PUBLISHED',
+  IN_PROGRESS: 'IN_PROGRESS',
   CANCELLED: 'CANCELLED',
   COMPLETED: 'COMPLETED'
 };
