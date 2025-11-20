@@ -6,6 +6,7 @@
 const database = require('../database');
 const mongoose = require('mongoose');
 const seedUsers = require('./userSeeder');
+const { seedEvents } = require('./eventSeeder');
 
 /**
  * Master Seeder
@@ -15,6 +16,7 @@ class MasterSeeder {
     constructor() {
         this.seeders = [
             { name: 'Users', fn: seedUsers, enabled: true },
+            { name: 'Events', fn: seedEvents, enabled: true },
             // Add more seeders here as they are created
         ];
     }

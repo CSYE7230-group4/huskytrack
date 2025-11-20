@@ -2,26 +2,39 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { AuthProvider } from "../contexts/AuthContext";
 import PrivateRoute from "../components/PrivateRoute";
 
-// MAIN LAYOUTS
+// Layouts
 import MainLayout from "../layouts/MainLayout";
 import AuthLayout from "../layouts/AuthLayout";
 
-// MAIN APP PAGES
+// Pages
+import LandingPage from "../pages/LandingPage";
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
+import EventDetails from "../pages/EventDetails";
 import Profile from "../pages/Profile";
 
-// AUTH PAGES (new flattened structure)
+// Auth pages
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
+import UiGuide from "../pages/UiGuide";
+
+
 const router = createBrowserRouter([
-  // ==========================
-  // AUTH ROUTES (Public)
-  // ==========================
+  // =================================
+  // PUBLIC ROUTES (Landing Page)
+  // =================================
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
+
+  // =================================
+  // AUTH ROUTES
+  // =================================
   {
     path: "/auth",
     element: <AuthLayout />,
@@ -35,11 +48,11 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ==========================
-  // MAIN APP ROUTES (Protected)
-  // ==========================
+  // =================================
+  // APP ROUTES (Main Layout)
+  // =================================
   {
-    path: "/",
+    path: "/app",
     element: (
       <PrivateRoute>
         <MainLayout />
@@ -48,61 +61,24 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "events", element: <Events /> },
+      { path: "events/:id", element: <EventDetails /> },
       { path: "profile", element: <Profile /> },
+      { path: "ui-guide", element: <UiGuide /> },
     ],
   },
 
-  // ==========================
-  // ROLE-BASED ROUTES
-  // ==========================
-  // Admin-only routes
   {
-    path: "/admin",
-    element: (
-      <PrivateRoute requiredRole="ADMIN">
-        <MainLayout />
-      </PrivateRoute>
-    ),
-    children: [
-      { index: true, element: <Dashboard /> },
-      // Add admin-specific pages here
-    ],
+    path: "/profile",
+    element: <Navigate to="/app/profile" replace />,
   },
 
-  // Organizer and Admin routes
-  {
-    path: "/organizer",
-    element: (
-      <PrivateRoute requiredRole={["ORGANIZER", "ADMIN"]}>
-        <MainLayout />
-      </PrivateRoute>
-    ),
-    children: [
-      { index: true, element: <Dashboard /> },
-      // Add organizer-specific pages here
-    ],
-  },
 
-  // Student routes (all authenticated users can access)
-  {
-    path: "/student",
-    element: (
-      <PrivateRoute requiredRole="STUDENT">
-        <MainLayout />
-      </PrivateRoute>
-    ),
-    children: [
-      { index: true, element: <Dashboard /> },
-      // Add student-specific pages here
-    ],
-  },
-
-  // ==========================
-  // FALLBACK ROUTE
-  // ==========================
+  // =================================
+  // UNKNOWN ROUTES
+  // =================================
   {
     path: "*",
-    element: <Navigate to="/auth/login" replace />,
+    element: <Navigate to="/" replace />,
   },
 ]);
 

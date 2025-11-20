@@ -29,6 +29,12 @@ const CommentSchema = new mongoose.Schema({
     minlength: [1, 'Comment cannot be empty'],
     maxlength: [2000, 'Comment cannot exceed 2000 characters']
   },
+  rating: {
+    type: Number,
+    min: [1, 'Rating must be at least 1'],
+    max: [5, 'Rating cannot exceed 5'],
+    default: null // null means no rating provided (comment without rating)
+  },
   isEdited: {
     type: Boolean,
     default: false

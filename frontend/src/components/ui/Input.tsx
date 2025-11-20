@@ -1,32 +1,37 @@
-interface InputProps {
+import React from "react";
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  type?: string;
-  placeholder?: string;
   className?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
 }
 
 export default function Input({
   label,
-  type = "text",
-  placeholder,
   className = "",
-  value,
-  onChange,
-  required,
+  id,
+  ...props
 }: InputProps) {
+  // Ensure input always has an ID for label accessibility
+  const inputId = id || `input-${Math.random().toString(36).slice(2)}`;
+
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="font-medium text-gray-700">{label}</label>}
+      {label && (
+        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+          {label}
+        </label>
+      )}
+
       <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        required={required}
-        className={`border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary ${className}`}
+        id={inputId}
+        aria-label={label}
+        {...props}
+        className={`
+          border border-gray-300 rounded-md px-3 py-2 
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
+          transition-all
+          ${className}
+        `}
       />
     </div>
   );
