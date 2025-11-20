@@ -125,7 +125,10 @@ const searchEventsSchema = z.object({
     q: z.string().min(1, 'Search query is required'),
     page: z.string().regex(/^\d+$/).transform(Number).optional(),
     limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-    category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional()
+    category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'popularity', '-popularity', 'relevance']).optional()
   })
 });
 

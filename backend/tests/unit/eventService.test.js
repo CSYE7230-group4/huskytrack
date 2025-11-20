@@ -410,6 +410,132 @@ describe('EventService', () => {
       expect(Array.isArray(result.events)).toBe(true);
     });
   });
+
+  describe('getDraftEventsByOrganizer', () => {
+    test('should return only draft events for organizer', async () => {
+      // Arrange
+      const organizerId = 'organizer-id';
+      const mockDraftEvents = [
+        {
+          _id: 'event-1',
+          title: 'Draft Event 1',
+          status: EventStatus.DRAFT,
+          organizer: { _id: organizerId }
+        },
+        {
+          _id: 'event-2',
+          title: 'Draft Event 2',
+          status: EventStatus.DRAFT,
+          organizer: { _id: organizerId }
+        }
+      ];
+
+      eventRepository.findAll.mockResolvedValue({
+        events: mockDraftEvents,
+        pagination: { currentPage: 1, totalPages: 1, totalCount: 2 }
+      });
+
+      // Act
+      const result = await eventService.getDraftEventsByOrganizer(organizerId, {
+        page: 1,
+        limit: 20
+      });
+
+      // Assert
+      expect(result.events).toHaveLength(2);
+      expect(result.events.every(e => e.status === EventStatus.DRAFT)).toBe(true);
+      expect(eventRepository.findAll).toHaveBeenCalledWith(
+        { organizer: organizerId, status: EventStatus.DRAFT },
+        expect.objectContaining({ populate: true })
+      );
+    });
+
+    test('should return empty array when organizer has no drafts', async () => {
+      // Arrange
+      const organizerId = 'organizer-id';
+      
+      eventRepository.findAll.mockResolvedValue({
+        events: [],
+        pagination: { currentPage: 1, totalPages: 0, totalCount: 0 }
+      });
+
+      // Act
+      const result = await eventService.getDraftEventsByOrganizer(organizerId);
+
+      // Assert
+      expect(result.events).toHaveLength(0);
+    });
+  });
+
+  describe('updateEvent - Status Changes', () => {
+    test('should allow valid status transition via update', async () => {
+      // Arrange
+      const eventId = 'test-event-id';
+      const userId = 'organizer-id';
+      
+      const mockEvent = {
+        _id: eventId,
+        title: 'Test Event',
+        organizer: { _id: userId },
+        status: EventStatus.DRAFT,
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 90000000),
+        currentRegistrations: 0,
+        description: 'Test description',
+        location: { name: 'Test' },
+        category: 'Academic',
+        toObject: () => ({ 
+          title: 'Test Event',
+          description: 'Test description',
+          location: { name: 'Test' },
+          category: 'Academic'
+        })
+      };
+
+      eventRepository.findById.mockResolvedValue(mockEvent);
+      eventRepository.update.mockResolvedValue({ 
+        ...mockEvent, 
+        status: EventStatus.PUBLISHED 
+      });
+
+      // Act
+      const result = await eventService.updateEvent(
+        eventId, 
+        { status: EventStatus.PUBLISHED }, 
+        userId
+      );
+
+      // Assert
+      expect(result.status).toBe(EventStatus.PUBLISHED);
+      expect(eventRepository.update).toHaveBeenCalled();
+    });
+
+    test('should reject invalid status transition via update', async () => {
+      // Arrange
+      const eventId = 'test-event-id';
+      const userId = 'organizer-id';
+      
+      const mockEvent = {
+        _id: eventId,
+        organizer: { _id: userId },
+        status: EventStatus.DRAFT,
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 90000000),
+        toObject: () => ({})
+      };
+
+      eventRepository.findById.mockResolvedValue(mockEvent);
+
+      // Act & Assert
+      await expect(
+        eventService.updateEvent(eventId, { status: EventStatus.COMPLETED }, userId)
+      ).rejects.toThrow(ValidationError);
+      
+      await expect(
+        eventService.updateEvent(eventId, { status: EventStatus.COMPLETED }, userId)
+      ).rejects.toThrow('Cannot transition from DRAFT to COMPLETED');
+    });
+  });
 });
 
 describe('EventService Integration Tests', () => {

@@ -137,6 +137,24 @@ class EventService {
   }
 
   /**
+   * Get draft events by organizer
+   * @param {String} organizerId - Organizer user ID
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} Draft events and metadata
+   */
+  async getDraftEventsByOrganizer(organizerId, options = {}) {
+    const filters = { 
+      organizer: organizerId, 
+      status: EventStatus.DRAFT 
+    };
+    
+    return await eventRepository.findAll(filters, {
+      ...options,
+      populate: true
+    });
+  }
+
+  /**
    * Update event
    * @param {String} eventId - Event ID
    * @param {Object} updateData - Data to update

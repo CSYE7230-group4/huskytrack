@@ -102,5 +102,10 @@ const startServer = async () => {
     }
 };
 
-// Start the application
-startServer();
+// Start the application (only if not in test environment)
+if (process.env.NODE_ENV !== 'test') {
+    startServer();
+}
+
+// Export for testing
+module.exports = app;
