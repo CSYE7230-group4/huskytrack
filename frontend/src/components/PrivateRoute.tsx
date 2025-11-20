@@ -39,7 +39,7 @@ export default function PrivateRoute({
   // Check role-based access if required
   if (requiredRole && !hasRole(requiredRole)) {
     // Redirect to unauthorized page or dashboard
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" state={{ user: user?.email }} replace />;
   }
 
   // User is authenticated and has required role (if any)
