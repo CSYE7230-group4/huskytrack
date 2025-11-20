@@ -1,25 +1,38 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 
-// MAIN LAYOUTS
+// Layouts
 import MainLayout from "../layouts/MainLayout";
 import AuthLayout from "../layouts/AuthLayout";
 
-// MAIN APP PAGES
+// Pages
+import LandingPage from "../pages/LandingPage";
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
+import EventDetails from "../pages/EventDetails";
 import Profile from "../pages/Profile";
 
-// AUTH PAGES (new flattened structure)
+// Auth pages
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
+import UiGuide from "../pages/UiGuide";
+
+
 const router = createBrowserRouter([
-  // ==========================
+  // =================================
+  // PUBLIC ROUTES (Landing Page)
+  // =================================
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
+
+  // =================================
   // AUTH ROUTES
-  // ==========================
+  // =================================
   {
     path: "/auth",
     element: <AuthLayout />,
@@ -33,25 +46,33 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ==========================
-  // MAIN APP ROUTES
-  // ==========================
+  // =================================
+  // APP ROUTES (Main Layout)
+  // =================================
   {
-    path: "/",
+    path: "/app",
     element: <MainLayout />,
     children: [
       { index: true, element: <Dashboard /> },
       { path: "events", element: <Events /> },
+      { path: "events/:id", element: <EventDetails /> },
       { path: "profile", element: <Profile /> },
+      { path: "ui-guide", element: <UiGuide /> },
     ],
   },
 
-  // ==========================
-  // FALLBACK ROUTE
-  // ==========================
+  {
+    path: "/profile",
+    element: <Navigate to="/app/profile" replace />,
+  },
+
+
+  // =================================
+  // UNKNOWN ROUTES
+  // =================================
   {
     path: "*",
-    element: <Navigate to="/auth/login" replace />,
+    element: <Navigate to="/" replace />,
   },
 ]);
 

@@ -17,16 +17,11 @@ export default function Toast({
 
   return (
     <div
-      role="status"
-      aria-live="polite"
-      className={`flex items-center gap-3 text-white px-4 py-3 rounded-lg shadow-lg animate-toastSlide ${colors[toast.type]}`}
+      className={`flex items-center gap-3 text-white px-4 py-3 rounded-lg shadow-lg animate-toastSlide 
+        ${colors[toast.type]}`}
     >
       <p>{toast.message}</p>
-      <button
-        aria-label="Close notification"
-        onClick={onClose}
-        className="hover:text-black focus-visible:ring-2 focus-visible:ring-white rounded"
-      >
+      <button onClick={onClose}>
         <X size={16} />
       </button>
     </div>
