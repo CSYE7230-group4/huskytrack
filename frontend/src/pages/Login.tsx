@@ -12,18 +12,12 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already authenticated
+  // Redirect destination after login
   const from = (location.state as any)?.from?.pathname || "/";
-
-  // Redirect if already logged in
-  if (isAuthenticated) {
-    navigate(from, { replace: true });
-    return null;
-  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
