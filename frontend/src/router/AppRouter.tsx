@@ -1,4 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { AuthProvider } from "../contexts/AuthContext";
+import PrivateRoute from "../components/PrivateRoute";
 
 // MAIN LAYOUTS
 import MainLayout from "../layouts/MainLayout";
@@ -18,7 +20,7 @@ import ResetSuccess from "../pages/ResetSuccess";
 
 const router = createBrowserRouter([
   // ==========================
-  // AUTH ROUTES
+  // AUTH ROUTES (Public)
   // ==========================
   {
     path: "/auth",
@@ -34,15 +36,64 @@ const router = createBrowserRouter([
   },
 
   // ==========================
-  // MAIN APP ROUTES
+  // MAIN APP ROUTES (Protected)
   // ==========================
   {
     path: "/",
-    element: <MainLayout />,
+    element: (
+      <PrivateRoute>
+        <MainLayout />
+      </PrivateRoute>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: "events", element: <Events /> },
       { path: "profile", element: <Profile /> },
+    ],
+  },
+
+  // ==========================
+  // ROLE-BASED ROUTES
+  // ==========================
+  // Admin-only routes
+  {
+    path: "/admin",
+    element: (
+      <PrivateRoute requiredRole="ADMIN">
+        <MainLayout />
+      </PrivateRoute>
+    ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      // Add admin-specific pages here
+    ],
+  },
+
+  // Organizer and Admin routes
+  {
+    path: "/organizer",
+    element: (
+      <PrivateRoute requiredRole={["ORGANIZER", "ADMIN"]}>
+        <MainLayout />
+      </PrivateRoute>
+    ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      // Add organizer-specific pages here
+    ],
+  },
+
+  // Student routes (all authenticated users can access)
+  {
+    path: "/student",
+    element: (
+      <PrivateRoute requiredRole="STUDENT">
+        <MainLayout />
+      </PrivateRoute>
+    ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      // Add student-specific pages here
     ],
   },
 
@@ -56,5 +107,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function AppRouter() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

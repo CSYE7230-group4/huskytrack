@@ -1,8 +1,24 @@
 // src/layouts/MainLayout.tsx
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import HuskyLogo from "../assets/husky-logo.png";
+import Button from "../components/ui/Button";
 
 export default function MainLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still navigate to login even if logout API call fails
+      navigate("/auth/login");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top bar */}
@@ -16,39 +32,53 @@ export default function MainLayout() {
             </span>
           </div>
 
-          {/* Nav links */}
-          <nav className="flex items-center gap-6 text-sm font-medium">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/events"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Events
-            </NavLink>
-            <NavLink
-              to="/profile"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Profile
-            </NavLink>
-          </nav>
+          {/* Nav links and user info */}
+          <div className="flex items-center gap-6">
+            <nav className="flex items-center gap-6 text-sm font-medium">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `hover:text-primary transition ${
+                    isActive ? "text-primary" : "text-gray-600"
+                  }`
+                }
+              >
+                Dashboard
+              </NavLink>
+              <NavLink
+                to="/events"
+                className={({ isActive }) =>
+                  `hover:text-primary transition ${
+                    isActive ? "text-primary" : "text-gray-600"
+                  }`
+                }
+              >
+                Events
+              </NavLink>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `hover:text-primary transition ${
+                    isActive ? "text-primary" : "text-gray-600"
+                  }`
+                }
+              >
+                Profile
+              </NavLink>
+            </nav>
+
+            {/* User info and logout */}
+            <div className="flex items-center gap-4">
+              {user && (
+                <span className="text-sm text-gray-600">
+                  {user.firstName} {user.lastName}
+                </span>
+              )}
+              <Button variant="outline" onClick={handleLogout} className="text-sm">
+                Logout
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 

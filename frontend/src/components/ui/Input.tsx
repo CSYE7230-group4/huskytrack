@@ -5,6 +5,7 @@ interface InputProps {
   className?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
 }
 
 export default function Input({
@@ -14,6 +15,7 @@ export default function Input({
   className = "",
   value,
   onChange,
+  required,
 }: InputProps) {
   return (
     <div className="flex flex-col gap-1">
@@ -23,6 +25,7 @@ export default function Input({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        required={required}
         className={`border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary ${className}`}
       />
     </div>

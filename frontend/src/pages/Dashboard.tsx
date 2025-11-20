@@ -1,10 +1,10 @@
+import { useState } from "react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
 import Spinner from "../components/ui/Spinner";
 import Skeleton from "../components/ui/Skeleton";
-import { useState } from "react";
 
 export default function Dashboard() {
   const [open, setOpen] = useState(false);
