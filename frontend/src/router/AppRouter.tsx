@@ -1,4 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { AuthProvider } from "../contexts/AuthContext";
+import PrivateRoute from "../components/PrivateRoute";
 
 // Layouts
 import MainLayout from "../layouts/MainLayout";
@@ -51,7 +53,11 @@ const router = createBrowserRouter([
   // =================================
   {
     path: "/app",
-    element: <MainLayout />,
+    element: (
+      <PrivateRoute>
+        <MainLayout />
+      </PrivateRoute>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: "events", element: <Events /> },
@@ -77,5 +83,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function AppRouter() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

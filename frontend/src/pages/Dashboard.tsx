@@ -43,7 +43,7 @@ export default function Dashboard() {
       {/* Demo Toast Button */}
       <Button
         onClick={() =>
-          showToast("success", "This is a toast notification!")
+          showToast("This is a toast notification!", "success")
         }
         className="mt-2"
       >

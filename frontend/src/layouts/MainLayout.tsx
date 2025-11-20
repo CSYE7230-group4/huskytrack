@@ -1,10 +1,26 @@
 // src/layouts/MainLayout.tsx
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import HuskyLogo from "../assets/husky-logo.png";
 import SidebarLayout from "./SidebarLayout";
 import Footer from "../components/common/Footer";
+import Button from "../components/ui/Button";
 
 export default function MainLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still navigate to login even if logout API call fails
+      navigate("/auth/login");
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-background">
 
@@ -25,6 +41,25 @@ export default function MainLayout() {
                 HuskyTrack
               </span>
             </div>
+
+            {/* User Section */}
+            {user && (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  Logout
+                </Button>
+              </div>
+            )}
 
           </div>
         </header>
