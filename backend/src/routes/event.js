@@ -16,25 +16,16 @@ const {
 
 // Public routes (no authentication required)
 
-// Get all events with filters
-router.get('/', validateGetEvents, optionalAuth, eventController.getEvents);
-
-// Get upcoming events
+// Get upcoming events (must be before /:id)
 router.get('/upcoming', validateGetEvents, eventController.getUpcomingEvents);
 
-// Search events
+// Search events (must be before /:id)
 router.get('/search', validateSearchEvents, eventController.searchEvents);
 
-// Get events by category
+// Get events by category (must be before /:id)
 router.get('/category/:category', validateGetEvents, eventController.getEventsByCategory);
 
-// Get event by ID (public for published events)
-router.get('/:id', optionalAuth, eventController.getEventById);
-
-// Get event capacity
-router.get('/:id/capacity', eventController.getEventCapacity);
-
-// Protected routes (authentication required)
+// Protected routes (authentication required) - Specific routes before parameter routes
 
 // Create new event (ORGANIZER and ADMIN only)
 router.post(
@@ -45,12 +36,20 @@ router.post(
   eventController.createEvent
 );
 
-// Get my events
+// Get organizer events (must be before /:id)
 router.get(
   '/my/events',
   authenticate,
   authorize('ORGANIZER', 'ADMIN'),
   eventController.getMyEvents
+);
+
+// Get my draft events (must be before /organizer/:organizerId)
+router.get(
+  '/organizer/events/drafts',
+  authenticate,
+  authorize('ORGANIZER', 'ADMIN'),
+  eventController.getMyDraftEvents
 );
 
 // Get events by organizer
@@ -61,12 +60,21 @@ router.get(
   eventController.getEventsByOrganizer
 );
 
-// Check if user can register
+// Get event capacity (must be before /:id to avoid conflict)
+router.get('/:id/capacity', eventController.getEventCapacity);
+
+// Check if user can register (must be before /:id for clarity)
 router.get(
   '/:id/can-register',
   authenticate,
   eventController.canUserRegister
 );
+
+// Get all events with filters
+router.get('/', validateGetEvents, optionalAuth, eventController.getEvents);
+
+// Get event by ID (public for published events) - Must be last among GET routes
+router.get('/:id', optionalAuth, eventController.getEventById);
 
 // Update event (ORGANIZER own events, ADMIN all events)
 router.put(

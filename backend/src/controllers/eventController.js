@@ -177,6 +177,31 @@ const getMyEvents = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Get my draft events (current user's draft events)
+ * GET /api/v1/organizer/events/drafts
+ * Access: ORGANIZER, ADMIN
+ */
+const getMyDraftEvents = asyncHandler(async (req, res) => {
+    const organizerId = req.user.id;
+    const {
+        page = 1,
+        limit = 20
+    } = req.query;
+
+    const options = {
+        page: parseInt(page),
+        limit: parseInt(limit)
+    };
+
+    const result = await eventService.getDraftEventsByOrganizer(organizerId, options);
+
+    res.status(200).json({
+        success: true,
+        data: result
+    });
+});
+
+/**
  * Update event
  * PUT /api/v1/events/:id
  * Access: Organizer (own events), Admin
@@ -343,6 +368,7 @@ module.exports = {
     getEventById,
     getEventsByOrganizer,
     getMyEvents,
+    getMyDraftEvents,
     updateEvent,
     deleteEvent,
     publishEvent,
