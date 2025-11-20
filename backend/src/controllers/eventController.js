@@ -284,15 +284,27 @@ const searchEvents = asyncHandler(async (req, res) => {
         q,
         page = 1,
         limit = 20,
-        category
+        category,
+        startDate,
+        endDate,
+        sort = 'relevance'
     } = req.query;
 
     const filters = {};
     if (category) filters.category = category;
+    
+    // Add date range filters
+    if (startDate) {
+        filters.startDate = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+        filters.endDate = { $lte: new Date(endDate) };
+    }
 
     const options = {
         page: parseInt(page),
-        limit: parseInt(limit)
+        limit: parseInt(limit),
+        sort
     };
 
     const result = await eventService.searchEvents(q, filters, options);

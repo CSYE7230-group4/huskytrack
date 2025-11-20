@@ -144,7 +144,7 @@ class EventRepository {
    * Search events by text
    * @param {String} searchText - Search query
    * @param {Object} filters - Additional filters
-   * @param {Object} options - Query options
+   * @param {Object} options - Query options (includes sort parameter)
    * @returns {Promise<Object>} Events and metadata
    */
   async search(searchText, filters = {}, options = {}) {
@@ -154,9 +154,28 @@ class EventRepository {
       ...filters
     };
 
+    // Build sort object based on sort parameter
+    let sortObj = {};
+    const sortParam = options.sort || 'relevance';
+    
+    if (sortParam === 'relevance' || sortParam === '-relevance') {
+      // Default: sort by text score relevance
+      sortObj = { score: { $meta: 'textScore' } };
+    } else if (sortParam === 'popularity') {
+      sortObj = { currentRegistrations: -1 };
+    } else if (sortParam === '-popularity') {
+      sortObj = { currentRegistrations: 1 };
+    } else if (sortParam.startsWith('-')) {
+      // Descending sort
+      sortObj[sortParam.substring(1)] = -1;
+    } else {
+      // Ascending sort
+      sortObj[sortParam] = 1;
+    }
+
     return await this.findAll(searchFilters, {
       ...options,
-      sort: { score: { $meta: 'textScore' } }
+      sort: sortObj
     });
   }
 

@@ -510,7 +510,8 @@ describe('GET /api/v1/events/search - Search Events', () => {
       startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
       location: { name: 'Richards Hall' },
-      isPublic: true
+      isPublic: true,
+      currentRegistrations: 25
     });
 
     await Event.create({
@@ -522,7 +523,21 @@ describe('GET /api/v1/events/search - Search Events', () => {
       startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
       location: { name: 'Snell Library' },
-      isPublic: true
+      isPublic: true,
+      currentRegistrations: 50
+    });
+
+    await Event.create({
+      title: 'Career Fair',
+      description: 'Annual career fair with top companies',
+      category: 'Career',
+      status: EventStatus.PUBLISHED,
+      organizer: organizerUser._id,
+      startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+      location: { name: 'Curry Center' },
+      isPublic: true,
+      currentRegistrations: 100
     });
   });
 
@@ -548,6 +563,71 @@ describe('GET /api/v1/events/search - Search Events', () => {
       .expect(200);
 
     expect(response.body.data.events.every(e => e.category === 'Academic')).toBe(true);
+  });
+
+  test('should filter by date range', async () => {
+    const startDate = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const response = await request(app)
+      .get(`/api/v1/events/search?q=Programming&startDate=${startDate}&endDate=${endDate}`)
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    response.body.data.events.forEach(event => {
+      const eventStart = new Date(event.startDate);
+      expect(eventStart.getTime()).toBeGreaterThanOrEqual(new Date(startDate).getTime());
+      const eventEnd = new Date(event.endDate);
+      expect(eventEnd.getTime()).toBeLessThanOrEqual(new Date(endDate).getTime());
+    });
+  });
+
+  test('should combine multiple filters', async () => {
+    const startDate = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const response = await request(app)
+      .get(`/api/v1/events/search?q=Programming&category=Academic&startDate=${startDate}`)
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    response.body.data.events.forEach(event => {
+      expect(event.category).toBe('Academic');
+      const eventStart = new Date(event.startDate);
+      expect(eventStart.getTime()).toBeGreaterThanOrEqual(new Date(startDate).getTime());
+    });
+  });
+
+  test('should sort by date ascending', async () => {
+    const response = await request(app)
+      .get('/api/v1/events/search?q=Programming&sort=startDate')
+      .expect(200);
+
+    const dates = response.body.data.events.map(e => new Date(e.startDate).getTime());
+    for (let i = 1; i < dates.length; i++) {
+      expect(dates[i]).toBeGreaterThanOrEqual(dates[i - 1]);
+    }
+  });
+
+  test('should sort by date descending', async () => {
+    const response = await request(app)
+      .get('/api/v1/events/search?q=Programming&sort=-startDate')
+      .expect(200);
+
+    const dates = response.body.data.events.map(e => new Date(e.startDate).getTime());
+    for (let i = 1; i < dates.length; i++) {
+      expect(dates[i]).toBeLessThanOrEqual(dates[i - 1]);
+    }
+  });
+
+  test('should sort by popularity', async () => {
+    const response = await request(app)
+      .get('/api/v1/events/search?q=Programming&sort=popularity')
+      .expect(200);
+
+    const registrations = response.body.data.events.map(e => e.currentRegistrations);
+    for (let i = 1; i < registrations.length; i++) {
+      expect(registrations[i]).toBeLessThanOrEqual(registrations[i - 1]);
+    }
   });
 
   test('should return empty array for no matches', async () => {
