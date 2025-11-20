@@ -1,45 +1,98 @@
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
-import Modal from "../components/ui/Modal";
-import Toast from "../components/ui/Toast";
-import Spinner from "../components/ui/Spinner";
-import Skeleton from "../components/ui/Skeleton";
 import { useState } from "react";
+import SearchBar from "../components/ui/SearchBar";
+import CategoryFilter from "../components/ui/CategoryFilter";
+import EventCard from "../components/ui/EventCard";
+import { events } from "../data/events";
+
+import Modal from "../components/ui/Modal";
+import Button from "../components/ui/Button";
+
+import { useToast } from "../hooks/useToast";
+
 
 export default function Dashboard() {
-  const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+
+  const [showModal, setShowModal] = useState(false);
+
+  // ✅ ADD THIS EXACTLY HERE
+  const { showToast } = useToast();
+  // ----------------------------------
+
+  // FILTER LOGIC
+  const filtered = events.filter((event) => {
+    const matchesCategory =
+      category === "All" || event.type.toLowerCase() === category.toLowerCase();
+
+    const matchesSearch = event.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    return matchesCategory && matchesSearch;
+  });
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+    <div className="px-6 py-8 space-y-8">
 
-      <Card>
-        <p className="text-gray-700 mb-3">Component Testing Section</p>
+      {/* Header */}
+      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+        Welcome back 👋
+      </h1>
 
-        <Button onClick={() => setOpen(true)}>Open Modal</Button>
+      {/* Demo Toast Button */}
+      <Button
+        onClick={() =>
+          showToast("success", "This is a toast notification!")
+        }
+        className="mt-2"
+      >
+        Show Demo Toast
+      </Button>
 
-        <Button
-          variant="secondary"
-          className="ml-3"
-          onClick={() => setToast("This is a toast message!")}
-        >
-          Show Toast
-        </Button>
+      {/* Demo Modal Button */}
+      <Button
+        onClick={() => setShowModal(true)}
+        className="mt-2"
+      >
+        Open Demo Modal
+      </Button>
 
-        <div className="mt-4 flex gap-4 items-center">
-          <Spinner />
-          <Skeleton className="w-32 h-6" />
-        </div>
-      </Card>
+      {/* Search Input */}
+      <SearchBar
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-      {open && (
-        <Modal open={open} onClose={() => setOpen(false)} title="Modal Title">
-          <p>This is a modal content test.</p>
-        </Modal>
+      {/* Category Filter Tabs */}
+      <CategoryFilter active={category} onSelect={setCategory} />
+
+      {/* Events Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map((event) => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </div>
+
+      {/* No Results UI */}
+      {filtered.length === 0 && (
+        <p className="text-sm text-gray-500 text-center pt-10">
+          No events found matching your filters.
+        </p>
       )}
 
-      {toast && <Toast message={toast} />}
+      {/* Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Demo Modal"
+      >
+        <p className="text-gray-700">
+          This is your reusable modal component.  
+          You can now use it for event registration, confirmations, alerts, etc.
+        </p>
+      </Modal>
+
     </div>
   );
 }
