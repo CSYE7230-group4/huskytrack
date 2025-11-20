@@ -1,5 +1,12 @@
-export default function Spinner() {
+import { Loader2 } from "lucide-react";
+
+export default function Spinner({ size = 24 }: { size?: number }) {
   return (
-    <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="flex items-center justify-center">
+      <Loader2
+        size={size}
+        className="animate-spin text-primary"
+      />
+    </div>
   );
 }
