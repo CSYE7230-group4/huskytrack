@@ -1,5 +1,5 @@
-import { useState, FormEvent, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import AuthPageLayout from "../layouts/AuthPageLayout";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
@@ -11,48 +11,33 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || "/app";
-
-  // Redirect if already authenticated (unless we just logged in)
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && !submitted) {
-      navigate("/app", { replace: true });
-    }
-  }, [isLoading, isAuthenticated, submitted, navigate]);
+  // Redirect if already authenticated
+  if (!isLoading && isAuthenticated) {
+    navigate("/dashboard", { replace: true });
+    return null;
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
-
     try {
       await login(email, password);
-      // mark submitted; navigation will occur once user is authenticated
-      setSubmitted(true);
+      // If AuthContext doesn't redirect, navigate here:
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
-      console.error("login error", err);
       setError(err?.message || "Failed to log in. Please try again.");
-      setSubmitted(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    if (submitted && isAuthenticated) {
-      console.log("navigating to", from, "after authentication");
-      navigate(from, { replace: true });
-    }
-  }, [submitted, isAuthenticated, navigate, from]);
-
   // Show loading spinner while checking initial auth state
-  if (isLoading && !submitted) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner />
