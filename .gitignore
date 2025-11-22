@@ -140,4 +140,5 @@ vite.config.ts.timestamp-*
 
 # Custom ignore files
 tasks/*
-*.md
+design/diagrams/markdowns/*
+backend/*.md
