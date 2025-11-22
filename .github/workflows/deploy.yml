@@ -1,0 +1,53 @@
+name: Test Deployment to EC2 (aayushi-docker)
+
+on:
+  push:
+    branches:
+      - aayushi-docker
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm install
+
+    - name: Build frontend
+      working-directory: frontend
+      run: npm run build
+
+    - name: Install backend dependencies
+      working-directory: backend
+      run: npm install
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to EC2 via SSH
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          cd /var/www/huskytrack
+          git fetch origin
+          git checkout aayushi-docker
+          git pull origin aayushi-docker
+          docker compose down
+          docker compose up -d --build
