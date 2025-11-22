@@ -1,9 +1,9 @@
-name: Test Deployment to EC2 (aayushi-docker)
+name: Deployment to EC2 (main)
 
 on:
   push:
     branches:
-      - aayushi-docker
+      - main
 
 jobs:
   build:
@@ -47,7 +47,7 @@ jobs:
         script: |
           cd /var/www/huskytrack
           git fetch origin
-          git checkout aayushi-docker
-          git pull origin aayushi-docker
+          git checkout main
+          git pull origin main
           sudo docker compose down || true
           sudo docker compose up -d --build
