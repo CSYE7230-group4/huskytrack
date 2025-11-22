@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import HuskyLogo from "../assets/husky-logo.png";
 
 export default function AuthLayout() {
   return (
