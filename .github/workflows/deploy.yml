@@ -49,5 +49,5 @@ jobs:
           git fetch origin
           git checkout aayushi-docker
           git pull origin aayushi-docker
-          docker compose down
-          docker compose up -d --build
+          sudo docker compose down || true
+          sudo docker compose up -d --build
