@@ -1,6 +1,13 @@
 import { ToastItem } from "./ToastTypes";
 import { X } from "lucide-react";
 
+const colors: Record<ToastItem["type"], string> = {
+  success: "bg-green-500",
+  error: "bg-red-500",
+  info: "bg-blue-500",
+  warning: "bg-yellow-500 text-black",
+};
+
 export default function Toast({
   toast,
   onClose,
@@ -8,13 +15,6 @@ export default function Toast({
   toast: ToastItem;
   onClose: () => void;
 }) {
-  const colors = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    info: "bg-blue-500",
-    warning: "bg-yellow-500 text-black",
-  };
-
   return (
     <div
       role="status"

@@ -17,10 +17,10 @@ interface PrivateRouteProps {
 export default function PrivateRoute({
   children,
   requiredRole,
-  redirectTo = '/auth/login',
+  redirectTo: _redirectTo = '/auth/login',
 }: PrivateRouteProps) {
   const { isAuthenticated, isLoading, user, hasRole } = useAuth();
-  const location = useLocation();
+  void useLocation();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
