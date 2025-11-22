@@ -178,7 +178,6 @@ export default function Events() {
 
   const currentPage = pagination?.currentPage ?? page;
   const totalPages = pagination?.totalPages ?? 1;
-  const totalCount = pagination?.totalCount ?? filteredEvents.length;
 
   const handleClearFilters = () => {
     setFilters({

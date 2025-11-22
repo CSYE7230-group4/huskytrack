@@ -4,7 +4,7 @@ import { Calendar, MapPin, Users } from "lucide-react";
 export type EventStatus = "PUBLISHED" | "CANCELLED" | "DRAFT" | string;
 
 export interface EventDto {
-  _id: string;
+  _id?: string;
   title: string;
   category?: string;
   status?: EventStatus;
