@@ -43,8 +43,10 @@ export default function Register() {
         email,
         password,
         university: university || undefined,
+        // Default to STUDENT role (or adjust as needed)
+        role: "STUDENT",
       });
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       setError(err.message || "Failed to register. Please try again.");
     } finally {
