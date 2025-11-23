@@ -1,7 +1,6 @@
 // src/layouts/MainLayout.tsx
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import HuskyLogo from "../assets/husky-logo.png";
 import SidebarLayout from "./SidebarLayout";
 import Footer from "../components/common/Footer";
 import Button from "../components/ui/Button";
@@ -36,8 +35,8 @@ export default function MainLayout() {
 
             {/* Brand */}
             <div className="flex items-center gap-2">
-              <img src={HuskyLogo} alt="Husky logo" className="h-7 w-auto" />
-              <span className="text-lg font-semibold text-primary tracking-tight">
+              <img src="src\assets\NewLogoHuskyTrack.svg" alt="Husky logo" className="h-10 w-auto" />
+              <span className="text-xl font-semibold text-primary tracking-tight" >
                 HuskyTrack
               </span>
             </div>

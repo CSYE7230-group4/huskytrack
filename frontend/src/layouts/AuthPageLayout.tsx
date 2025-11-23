@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import HuskyLogo from "../assets/husky-logo.png";
+import HuskyLogo from "../assets/NewLogoHuskyTrack.svg";
 
 export default function AuthPageLayout({
   title,
