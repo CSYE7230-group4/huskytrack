@@ -12,29 +12,31 @@ import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
 import EventDetails from "../pages/EventDetails";
 import Profile from "../pages/Profile";
+import UiGuide from "../pages/UiGuide";
 
-// Auth pages
+// Auth Pages
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
-import UiGuide from "../pages/UiGuide";
-
+// Event Create / Edit (Task 2.7)
+import CreateEvent from "../pages/CreateEvent";
+import EditEvent from "../pages/EditEvent";
 
 const router = createBrowserRouter([
-  // =================================
-  // PUBLIC ROUTES (Landing Page)
-  // =================================
+  // ---------------------------------------
+  // Public Landing Page
+  // ---------------------------------------
   {
     path: "/",
     element: <LandingPage />,
   },
 
-  // =================================
-  // AUTH ROUTES
-  // =================================
+  // ---------------------------------------
+  // Auth Routes
+  // ---------------------------------------
   {
     path: "/auth",
     element: <AuthLayout />,
@@ -48,9 +50,9 @@ const router = createBrowserRouter([
     ],
   },
 
-  // =================================
-  // APP ROUTES (Main Layout)
-  // =================================
+  // ---------------------------------------
+  // App Routes (Protected)
+  // ---------------------------------------
   {
     path: "/app",
     element: (
@@ -60,22 +62,32 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
+
+      // EVENTS
       { path: "events", element: <Events /> },
+      { path: "events/new", element: <CreateEvent /> },
       { path: "events/:id", element: <EventDetails /> },
+      { path: "events/:id/edit", element: <EditEvent /> },
+
+      // PROFILE
       { path: "profile", element: <Profile /> },
+
+      // UI Guide
       { path: "ui-guide", element: <UiGuide /> },
     ],
   },
 
+  // ---------------------------------------
+  // Shortcut redirect
+  // ---------------------------------------
   {
     path: "/profile",
     element: <Navigate to="/app/profile" replace />,
   },
 
-
-  // =================================
-  // UNKNOWN ROUTES
-  // =================================
+  // ---------------------------------------
+  // Catch-all
+  // ---------------------------------------
   {
     path: "*",
     element: <Navigate to="/" replace />,
