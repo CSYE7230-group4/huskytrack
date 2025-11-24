@@ -5,6 +5,7 @@ import api from "../services/api";
 import { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
 import BookmarkButton from "../components/ui/BookmarkButton";
+import LikeButton from "../components/ui/LikeButton";
 import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../hooks/useToast";
 
@@ -111,6 +112,12 @@ export default function EventDetails() {
   const hasCapacity = max > 0;
   const spotsRemaining = hasCapacity ? Math.max(max - current, 0) : null;
   const isFull = hasCapacity && spotsRemaining === 0;
+  
+  // Check if event is completed (past end date or status is COMPLETED)
+  const now = new Date();
+  const endDate = event.endDate ? new Date(event.endDate) : null;
+  const isCompleted = endDate ? endDate <= now : false;
+  const isPast = endDate ? endDate < now : false;
 
   return (
     <div className="px-6 py-10 max-w-4xl mx-auto mt-6 space-y-6">
@@ -216,10 +223,23 @@ export default function EventDetails() {
       )}
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 pt-4">
-        <Button className="w-full sm:w-auto" disabled={isFull}>
-          {isFull ? "Event Full" : "Register for Event"}
-        </Button>
+      <div className="flex flex-col sm:flex-row gap-4 pt-4 items-center">
+        {!isPast && (
+          <Button className="w-full sm:w-auto" disabled={isFull}>
+            {isFull ? "Event Full" : "Register for Event"}
+          </Button>
+        )}
+        
+        {/* Like Button - Only show for completed events */}
+        {isCompleted && event._id && (
+          <div className={isPast ? "" : "ml-auto"}>
+            <LikeButton
+              eventId={event._id}
+              size="md"
+              showCount={true}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
