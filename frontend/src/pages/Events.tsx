@@ -3,9 +3,8 @@ import { Filter, X } from "lucide-react";
 
 import SearchBar from "../components/ui/SearchBar";
 import EventCard, { EventDto } from "../components/ui/EventCard";
-import Button from "../components/ui/Button";
-import Skeleton from "../components/ui/Skeleton";
 import CategoryFilter from "../components/ui/CategoryFilter";
+import Skeleton from "../components/ui/Skeleton";
 
 import ViewToggle from "../components/events/ViewToggle";
 import SortDropdown, { SortOption } from "../components/events/SortDropdown";
@@ -15,6 +14,9 @@ import EventFiltersSidebar, {
 
 import useDebouncedValue from "../hooks/useDebouncedValue";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
+
+import Button from "../components/ui/Button";
+import { useNavigate } from "react-router-dom";
 
 type ViewMode = "grid" | "list";
 
@@ -33,6 +35,7 @@ interface EventsApiResponse {
 const PAGE_SIZE = 9;
 
 export default function Events() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 400);
@@ -56,9 +59,9 @@ export default function Events() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false); // mobile drawer
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false); // Mobile drawer
 
-  /** FETCH EVENTS FROM BACKEND */
+  /** FETCH EVENTS */
   useEffect(() => {
     const controller = new AbortController();
 
@@ -72,7 +75,6 @@ export default function Events() {
         params.set("limit", PAGE_SIZE.toString());
 
         if (search.trim()) params.set("search", search.trim());
-
         if (selectedCategory !== "All") {
           params.set("category", selectedCategory.toLowerCase());
         }
@@ -80,9 +82,7 @@ export default function Events() {
         if (filters.dateFrom) params.set("startDate", filters.dateFrom);
         if (filters.dateTo) params.set("endDate", filters.dateTo);
 
-        if (sortBy === "date") {
-          params.set("sort", "startDate");
-        }
+        if (sortBy === "date") params.set("sort", "startDate");
 
         const res = await fetch(`/api/v1/events?${params.toString()}`, {
           signal: controller.signal,
@@ -100,7 +100,6 @@ export default function Events() {
         setPagination(payload.pagination || null);
       } catch (err: any) {
         if (err.name !== "AbortError") {
-          console.error("Events fetch error", err);
           setError(err.message || "Failed to load events.");
         }
       } finally {
@@ -126,7 +125,7 @@ export default function Events() {
     }
   });
 
-  /** TAGS extracted */
+  /** TAGS EXTRACTED */
   const allTags = useMemo(
     () =>
       Array.from(
@@ -140,11 +139,11 @@ export default function Events() {
     [events]
   );
 
-  /** CLIENT FILTERS */
+  /** CLIENT-SIDE FILTERS */
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
-    // category filter
+    // categories
     if (filters.categories.length > 0) {
       result = result.filter((e) =>
         filters.categories.some(
@@ -196,14 +195,26 @@ export default function Events() {
     <div className="space-y-6 animate-fadeIn">
       {/* HEADER */}
       <div className="transition-all duration-200">
-        <h1 className="text-3xl font-semibold text-gray-900">Explore Events</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Find workshops, cultural events, seminars and more.
-        </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900">Explore Events</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Find workshops, cultural events, seminars and more.
+            </p>
+          </div>
+
+          {/* CREATE EVENT BUTTON */}
+          <Button
+            variant="primary"
+            onClick={() => navigate("/app/events/new")}
+          >
+            + Create Event
+          </Button>
+        </div>
       </div>
 
       {/* SEARCH + SORT + VIEW + MOBILE FILTER BUTTON */}
-      <div className="flex flex-col gap-3 bg-white border border-gray-200 rounded-xl shadow-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-200">
+      <div className="flex flex-col gap-3 bg-white border border-gray-200 rounded-xl shadow-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-md">
           <SearchBar
             value={searchInput}
@@ -215,10 +226,10 @@ export default function Events() {
         </div>
 
         <div className="flex items-center gap-3 justify-between sm:justify-end">
-          {/* MOBILE ONLY FILTER BUTTON */}
+          {/* MOBILE FILTER BUTTON */}
           <button
             onClick={() => setIsFiltersOpen(true)}
-            className="sm:hidden inline-flex items-center gap-2 border border-gray-200 bg-white px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 active:scale-95 transition-all duration-150"
+            className="sm:hidden inline-flex items-center gap-2 border border-gray-200 bg-white px-3 py-2 rounded-lg text-xs"
           >
             <Filter className="h-4 w-4" />
             Filters
@@ -237,9 +248,10 @@ export default function Events() {
         }}
       />
 
+      {/* LAYOUT: SIDEBAR + RESULTS */}
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* DESKTOP SIDEBAR */}
-        <div className="hidden lg:block lg:w-64 lg:flex-none">
+        {/* SIDEBAR (DESKTOP) */}
+        <div className="hidden lg:block lg:w-64">
           <EventFiltersSidebar
             value={filters}
             availableTags={allTags}
@@ -251,11 +263,9 @@ export default function Events() {
         {/* RESULTS */}
         <div className="flex-1">
           {/* SUMMARY */}
-          <div className="text-xs text-gray-600 mb-3 flex items-center justify-between gap-2 transition-opacity duration-200">
+          <div className="text-xs text-gray-600 mb-3 flex justify-between">
             <span>
-              Showing{" "}
-              <span className="font-medium">{filteredEvents.length}</span>{" "}
-              events
+              Showing <span className="font-medium">{filteredEvents.length}</span> events
             </span>
             {pagination && (
               <span className="hidden sm:inline">
@@ -266,26 +276,26 @@ export default function Events() {
 
           {/* ERROR */}
           {error && (
-            <div className="border border-red-200 bg-red-50 px-4 py-3 rounded-lg text-red-700 text-xs mb-3 animate-slideUp">
+            <div className="border border-red-200 bg-red-50 px-4 py-3 rounded-lg text-red-700 text-xs mb-3">
               {error}
             </div>
           )}
 
-          {/* LOADING / EMPTY / RESULTS */}
+          {/* RESULTS / EMPTY / LOADING */}
           {isLoading && page === 1 ? (
             <div
               className={`${
                 viewMode === "grid"
                   ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   : "space-y-3"
-              } animate-fadeIn`}
+              }`}
             >
               {Array.from({ length: PAGE_SIZE }).map((_, i) => (
                 <Skeleton key={i} className="h-40 w-full rounded-xl" />
               ))}
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl px-6 py-10 animate-scaleIn">
+            <div className="text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl px-6 py-10">
               <p className="font-semibold text-sm text-gray-800">
                 No events match your filters
               </p>
@@ -303,32 +313,24 @@ export default function Events() {
             </div>
           ) : (
             <>
-              {/* key={viewMode} forces a soft re-mount so the view change animates */}
               <div
                 key={viewMode}
                 className={`${
                   viewMode === "grid"
                     ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                     : "space-y-3"
-                } animate-fadeIn transition-all duration-200`}
+                }`}
               >
                 {filteredEvents.map((event) => (
-                  <EventCard
-                    key={event._id}
-                    event={event}
-                    variant={viewMode}
-                  />
+                  <EventCard key={event._id} event={event} variant={viewMode} />
                 ))}
               </div>
 
-              {/* SKELETONS FOR INFINITE SCROLL */}
+              {/* Infinite scroll skeleton */}
               {isLoading && page > 1 && (
-                <div className="mt-4 animate-fadeIn">
+                <div className="mt-4">
                   {Array.from({ length: 3 }).map((_, idx) => (
-                    <Skeleton
-                      key={idx}
-                      className="h-28 w-full rounded-xl mb-3"
-                    />
+                    <Skeleton key={idx} className="h-28 w-full rounded-xl mb-3" />
                   ))}
                 </div>
               )}
@@ -342,17 +344,17 @@ export default function Events() {
         <div className="fixed inset-0 z-40 flex lg:hidden">
           {/* BACKDROP */}
           <div
-            className="absolute inset-0 bg-black/40 animate-fadeIn"
+            className="absolute inset-0 bg-black/40"
             onClick={() => setIsFiltersOpen(false)}
           />
 
           {/* PANEL */}
-          <div className="relative ml-auto bg-white w-80 max-w-full h-full shadow-xl p-4 animate-slideRight">
+          <div className="relative ml-auto bg-white w-80 h-full shadow-xl p-4">
             <div className="flex justify-between items-center mb-3">
               <h2 className="font-semibold text-sm text-gray-900">Filters</h2>
               <button
                 onClick={() => setIsFiltersOpen(false)}
-                className="p-1 rounded-md text-gray-600 hover:bg-gray-100 active:scale-95 transition-all duration-150"
+                className="p-1 rounded-md text-gray-600 hover:bg-gray-100"
               >
                 <X className="h-4 w-4" />
               </button>
