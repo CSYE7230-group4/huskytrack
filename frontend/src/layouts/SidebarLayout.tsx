@@ -1,6 +1,6 @@
 // src/layouts/SidebarLayout.tsx
 import { NavLink } from "react-router-dom";
-import { Menu, Home, Calendar, User } from "lucide-react";
+import { Menu, Home, Calendar, User, ClipboardList } from "lucide-react";
 
 export default function SidebarLayout() {
   return (
@@ -15,6 +15,7 @@ export default function SidebarLayout() {
       {/* Nav Links */}
       <nav className="flex flex-col gap-3 text-gray-700 text-sm font-medium">
 
+        {/* Dashboard */}
         <NavLink
           to="/app"
           className={({ isActive }) =>
@@ -27,6 +28,7 @@ export default function SidebarLayout() {
           Dashboard
         </NavLink>
 
+        {/* Events */}
         <NavLink
           to="/app/events"
           className={({ isActive }) =>
@@ -39,6 +41,20 @@ export default function SidebarLayout() {
           Events
         </NavLink>
 
+        {/* Organizer Dashboard — NEW */}
+        <NavLink
+          to="/app/organizer"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <ClipboardList className="w-4 h-4" />
+          Organizer
+        </NavLink>
+
+        {/* Profile */}
         <NavLink
           to="/app/profile"
           className={({ isActive }) =>
@@ -50,7 +66,9 @@ export default function SidebarLayout() {
           <User className="w-4 h-4" />
           Profile
         </NavLink>
-                <NavLink
+
+        {/* UI Guide */}
+        <NavLink
           to="/app/ui-guide"
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
@@ -58,9 +76,9 @@ export default function SidebarLayout() {
             }`
           }
         >
-          {/* No icon needed, but you can add one if you want */}
           UI Guide
         </NavLink>
+
       </nav>
     </aside>
   );
