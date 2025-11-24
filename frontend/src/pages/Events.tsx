@@ -1,132 +1,141 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Filter, X } from "lucide-react";
 
 import SearchBar from "../components/ui/SearchBar";
-import EventCard, { EventDto } from "../components/ui/EventCard";
+import EventCard from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
 import Skeleton from "../components/ui/Skeleton";
 import CategoryFilter from "../components/ui/CategoryFilter";
 
 import ViewToggle from "../components/events/ViewToggle";
-import SortDropdown, { SortOption } from "../components/events/SortDropdown";
+import SortDropdown, { SortOption as UISortOption } from "../components/events/SortDropdown";
 import EventFiltersSidebar, {
   FiltersState,
 } from "../components/events/EventFiltersSidebar";
 
-import useDebouncedValue from "../hooks/useDebouncedValue";
+import { useEventSearch, SortOption } from "../hooks/useEventSearch";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
 
 type ViewMode = "grid" | "list";
 
-interface EventsApiResponse {
-  events: EventDto[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalCount: number;
-    limit: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
-}
-
 const PAGE_SIZE = 9;
+
+// Map UI sort options to hook sort options
+const mapUISortToHookSort = (uiSort: UISortOption): SortOption => {
+  switch (uiSort) {
+    case "date":
+      return "date";
+    case "popularity":
+      return "popularity";
+    case "capacity":
+      return "capacity";
+    default:
+      return "date";
+  }
+};
 
 export default function Events() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [searchInput, setSearchInput] = useState("");
-  const search = useDebouncedValue(searchInput, 400);
-
   const [selectedCategory, setSelectedCategory] = useState("All");
-
-  const [filters, setFilters] = useState<FiltersState>({
-    categories: [],
-    dateFrom: undefined,
-    dateTo: undefined,
-    tags: [],
-  });
-
-  const [sortBy, setSortBy] = useState<SortOption>("date");
-  const [page, setPage] = useState(1);
-
-  const [events, setEvents] = useState<EventDto[]>([]);
-  const [pagination, setPagination] =
-    useState<EventsApiResponse["pagination"] | null>(null);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [isFiltersOpen, setIsFiltersOpen] = useState(false); // mobile drawer
 
-  /** FETCH EVENTS FROM BACKEND */
-  useEffect(() => {
-    const controller = new AbortController();
+  // Use the event search hook
+  const {
+    events,
+    isLoading,
+    error,
+    searchQuery,
+    filters,
+    sortBy: hookSortBy,
+    pagination,
+    setSearchQuery,
+    setFilters,
+    setSortBy: setHookSortBy,
+    setPage,
+    clearAllFilters,
+    retry,
+    resultCount,
+    hasActiveFilters,
+  } = useEventSearch({
+    pageSize: PAGE_SIZE,
+    debounceDelay: 300,
+    autoSearch: true,
+  });
 
-    async function fetchEvents() {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Map hook sort to UI sort for SortDropdown
+  const uiSortBy: UISortOption = useMemo(() => {
+    if (hookSortBy === "date" || hookSortBy === "startDate") return "date";
+    if (hookSortBy === "popularity") return "popularity";
+    if (hookSortBy === "capacity") return "capacity";
+    return "date";
+  }, [hookSortBy]);
 
-        const params = new URLSearchParams();
-        params.set("page", page.toString());
-        params.set("limit", PAGE_SIZE.toString());
-
-        if (search.trim()) params.set("search", search.trim());
-
-        if (selectedCategory !== "All") {
-          params.set("category", selectedCategory.toLowerCase());
-        }
-
-        if (filters.dateFrom) params.set("startDate", filters.dateFrom);
-        if (filters.dateTo) params.set("endDate", filters.dateTo);
-
-        if (sortBy === "date") {
-          params.set("sort", "startDate");
-        }
-
-        const res = await fetch(`/api/v1/events?${params.toString()}`, {
-          signal: controller.signal,
-          credentials: "include",
-        });
-
-        if (!res.ok) throw new Error(`Failed to load events (${res.status})`);
-
-        const json = await res.json();
-        const payload = json.data as EventsApiResponse;
-
-        if (page === 1) setEvents(payload.events || []);
-        else setEvents((prev) => [...prev, ...(payload.events || [])]);
-
-        setPagination(payload.pagination || null);
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Events fetch error", err);
-          setError(err.message || "Failed to load events.");
-        }
-      } finally {
-        setIsLoading(false);
-      }
+  // Update filters when CategoryFilter changes
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    if (category === "All") {
+      setFilters((prev) => ({ ...prev, categories: [] }));
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        categories: [category],
+      }));
     }
+  };
 
-    fetchEvents();
-    return () => controller.abort();
-  }, [
-    page,
-    search,
-    selectedCategory,
-    filters.dateFrom,
-    filters.dateTo,
-    sortBy,
-  ]);
+  // Sync selectedCategory with filters.categories
+  useEffect(() => {
+    if (filters.categories.length === 0 && selectedCategory !== "All") {
+      setSelectedCategory("All");
+    } else if (
+      filters.categories.length === 1 &&
+      selectedCategory !== filters.categories[0]
+    ) {
+      setSelectedCategory(filters.categories[0]);
+    }
+  }, [filters.categories, selectedCategory]);
+
+  // Handle sort change from UI
+  const handleSortChange = (sort: UISortOption) => {
+    setHookSortBy(mapUISortToHookSort(sort));
+  };
+
+  // Convert FiltersState to EventFilters format
+  const sidebarFilters: FiltersState = useMemo(
+    () => ({
+      categories: filters.categories,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      tags: filters.tags,
+    }),
+    [filters]
+  );
+
+  // Handle sidebar filter changes
+  const handleSidebarFiltersChange = (newFilters: FiltersState) => {
+    setFilters({
+      categories: newFilters.categories,
+      dateFrom: newFilters.dateFrom,
+      dateTo: newFilters.dateTo,
+      tags: newFilters.tags,
+      location: filters.location, // Preserve location if it exists
+    });
+  };
+
+  // Enhanced clear filters that also clears category
+  const handleClearFilters = () => {
+    clearAllFilters();
+    setSelectedCategory("All");
+  };
 
   /** INFINITE SCROLL */
   useInfiniteScroll(() => {
     if (!isLoading && pagination?.hasNextPage) {
-      setPage((p) => p + 1);
+      setPage(pagination.currentPage + 1);
     }
   });
 
-  /** TAGS extracted */
+  /** TAGS extracted from events */
   const allTags = useMemo(
     () =>
       Array.from(
@@ -139,58 +148,6 @@ export default function Events() {
       ),
     [events]
   );
-
-  /** CLIENT FILTERS */
-  const filteredEvents = useMemo(() => {
-    let result = [...events];
-
-    // category filter
-    if (filters.categories.length > 0) {
-      result = result.filter((e) =>
-        filters.categories.some(
-          (cat) => e.category?.toLowerCase() === cat.toLowerCase()
-        )
-      );
-    }
-
-    // tags
-    if (filters.tags.length > 0) {
-      result = result.filter((e) =>
-        filters.tags.every((tag) => e.tags?.includes(tag))
-      );
-    }
-
-    // sort
-    if (sortBy === "popularity") {
-      result.sort(
-        (a, b) =>
-          (b.currentRegistrations ?? 0) - (a.currentRegistrations ?? 0)
-      );
-    } else if (sortBy === "capacity") {
-      const remaining = (e: EventDto) =>
-        (e.maxRegistrations ?? 0) - (e.currentRegistrations ?? 0);
-      result.sort((a, b) => remaining(b) - remaining(a));
-    } else if (sortBy === "date") {
-      result.sort(
-        (a, b) =>
-          (a.startDate ? +new Date(a.startDate) : 0) -
-          (b.startDate ? +new Date(b.startDate) : 0)
-      );
-    }
-
-    return result;
-  }, [events, filters.categories, filters.tags, sortBy]);
-
-  const handleClearFilters = () => {
-    setFilters({
-      categories: [],
-      dateFrom: undefined,
-      dateTo: undefined,
-      tags: [],
-    });
-    setSelectedCategory("All");
-    setPage(1);
-  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -206,11 +163,9 @@ export default function Events() {
       <div className="flex flex-col gap-3 bg-white border border-gray-200 rounded-xl shadow-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-200">
         <div className="w-full sm:max-w-md">
           <SearchBar
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
-              setPage(1);
-            }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            isLoading={isLoading && searchQuery.trim().length > 0}
           />
         </div>
 
@@ -224,27 +179,25 @@ export default function Events() {
             Filters
           </button>
 
-          <SortDropdown value={sortBy} onChange={setSortBy} />
+          <SortDropdown value={uiSortBy} onChange={handleSortChange} />
           <ViewToggle mode={viewMode} onChange={setViewMode} />
         </div>
       </div>
 
       <CategoryFilter
         active={selectedCategory}
-        onSelect={(c) => {
-          setSelectedCategory(c);
-          setPage(1);
-        }}
+        onSelect={handleCategoryChange}
       />
 
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* DESKTOP SIDEBAR */}
         <div className="hidden lg:block lg:w-64 lg:flex-none">
           <EventFiltersSidebar
-            value={filters}
+            value={sidebarFilters}
             availableTags={allTags}
-            onChange={setFilters}
+            onChange={handleSidebarFiltersChange}
             onClear={handleClearFilters}
+            hasActiveFilters={hasActiveFilters}
           />
         </div>
 
@@ -253,9 +206,24 @@ export default function Events() {
           {/* SUMMARY */}
           <div className="text-xs text-gray-600 mb-3 flex items-center justify-between gap-2 transition-opacity duration-200">
             <span>
-              Showing{" "}
-              <span className="font-medium">{filteredEvents.length}</span>{" "}
-              events
+              {isLoading && events.length === 0 ? (
+                "Loading events..."
+              ) : resultCount === 0 ? (
+                "No events found"
+              ) : (
+                <>
+                  Showing{" "}
+                  <span className="font-medium">
+                    {pagination?.currentPage === 1
+                      ? events.length
+                      : resultCount}
+                  </span>{" "}
+                  {resultCount === 1 ? "event" : "events"}
+                  {pagination && resultCount > events.length && (
+                    <> (of {resultCount} total)</>
+                  )}
+                </>
+              )}
             </span>
             {pagination && (
               <span className="hidden sm:inline">
@@ -266,13 +234,21 @@ export default function Events() {
 
           {/* ERROR */}
           {error && (
-            <div className="border border-red-200 bg-red-50 px-4 py-3 rounded-lg text-red-700 text-xs mb-3 animate-slideUp">
-              {error}
+            <div className="border border-red-200 bg-red-50 px-4 py-3 rounded-lg text-red-700 text-xs mb-3 animate-slideUp flex items-center justify-between">
+              <span>{error}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retry}
+                className="ml-2"
+              >
+                Retry
+              </Button>
             </div>
           )}
 
           {/* LOADING / EMPTY / RESULTS */}
-          {isLoading && page === 1 ? (
+          {isLoading && pagination?.currentPage === 1 ? (
             <div
               className={`${
                 viewMode === "grid"
@@ -284,7 +260,7 @@ export default function Events() {
                 <Skeleton key={i} className="h-40 w-full rounded-xl" />
               ))}
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : events.length === 0 ? (
             <div className="text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl px-6 py-10 animate-scaleIn">
               <p className="font-semibold text-sm text-gray-800">
                 No events match your filters
@@ -312,7 +288,7 @@ export default function Events() {
                     : "space-y-3"
                 } animate-fadeIn transition-all duration-200`}
               >
-                {filteredEvents.map((event) => (
+                {events.map((event) => (
                   <EventCard
                     key={event._id}
                     event={event}
@@ -322,7 +298,7 @@ export default function Events() {
               </div>
 
               {/* SKELETONS FOR INFINITE SCROLL */}
-              {isLoading && page > 1 && (
+              {isLoading && pagination && pagination.currentPage > 1 && (
                 <div className="mt-4 animate-fadeIn">
                   {Array.from({ length: 3 }).map((_, idx) => (
                     <Skeleton
@@ -360,9 +336,9 @@ export default function Events() {
 
             <div className="overflow-y-auto h-full">
               <EventFiltersSidebar
-                value={filters}
+                value={sidebarFilters}
                 availableTags={allTags}
-                onChange={setFilters}
+                onChange={handleSidebarFiltersChange}
                 onClear={handleClearFilters}
               />
             </div>
