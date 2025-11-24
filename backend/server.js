@@ -46,6 +46,10 @@ app.use(express.json({limit: '10mb'}));
 // URL-encoded body parsing
 app.use(express.urlencoded({ extended: true }));
 
+// Static file serving for uploads (local storage)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.get('/', (req, res) => {
     res.json({
