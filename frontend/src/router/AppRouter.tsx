@@ -25,6 +25,8 @@ import ResetSuccess from "../pages/ResetSuccess";
 import CreateEvent from "../pages/CreateEvent";
 import EditEvent from "../pages/EditEvent";
 
+import OrganizerDashboard from "../pages/OrganizerDashboard";
+
 const router = createBrowserRouter([
   // ---------------------------------------
   // Public Landing Page
@@ -74,6 +76,8 @@ const router = createBrowserRouter([
 
       // UI Guide
       { path: "ui-guide", element: <UiGuide /> },
+      
+      {  path: "organizer",  element: <OrganizerDashboard />,},
     ],
   },
 
