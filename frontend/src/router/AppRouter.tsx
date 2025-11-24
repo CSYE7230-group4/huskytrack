@@ -11,6 +11,7 @@ import LandingPage from "../pages/LandingPage";
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
 import EventDetails from "../pages/EventDetails";
+import MyBookmarks from "../pages/MyBookmarks";
 import Profile from "../pages/Profile";
 
 // Auth pages
@@ -62,6 +63,7 @@ const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       { path: "events", element: <Events /> },
       { path: "events/:id", element: <EventDetails /> },
+      { path: "bookmarks", element: <MyBookmarks /> },
       { path: "profile", element: <Profile /> },
       { path: "ui-guide", element: <UiGuide /> },
     ],
