@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Filter, X } from "lucide-react";
+
 import SearchBar from "../components/ui/SearchBar";
 import EventCard, { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
@@ -10,6 +12,7 @@ import SortDropdown, { SortOption } from "../components/events/SortDropdown";
 import EventFiltersSidebar, {
   FiltersState,
 } from "../components/events/EventFiltersSidebar";
+
 import useDebouncedValue from "../hooks/useDebouncedValue";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
 
@@ -53,6 +56,8 @@ export default function Events() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false); // mobile drawer
+
   /** FETCH EVENTS FROM BACKEND */
   useEffect(() => {
     const controller = new AbortController();
@@ -84,32 +89,26 @@ export default function Events() {
           credentials: "include",
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to load events (${res.status})`);
-        }
+        if (!res.ok) throw new Error(`Failed to load events (${res.status})`);
 
         const json = await res.json();
-
         const payload = json.data as EventsApiResponse;
 
-        if (page === 1) {
-          setEvents(payload.events || []);   // fresh load
-        } else {
-          setEvents((prev) => [...prev, ...(payload.events || [])]); // append
-        }
+        if (page === 1) setEvents(payload.events || []);
+        else setEvents((prev) => [...prev, ...(payload.events || [])]);
 
         setPagination(payload.pagination || null);
       } catch (err: any) {
-        if (err.name === "AbortError") return;
-        console.error("Events fetch error", err);
-        setError(err.message || "Something went wrong while loading events.");
+        if (err.name !== "AbortError") {
+          console.error("Events fetch error", err);
+          setError(err.message || "Failed to load events.");
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchEvents();
-
     return () => controller.abort();
   }, [
     page,
@@ -119,29 +118,33 @@ export default function Events() {
     filters.dateTo,
     sortBy,
   ]);
-    // Infinite scroll trigger
+
+  /** INFINITE SCROLL */
   useInfiniteScroll(() => {
     if (!isLoading && pagination?.hasNextPage) {
       setPage((p) => p + 1);
     }
   });
 
-  /** ALL TAGS EXTRACTED FROM EVENT LIST */
-  const allTags = useMemo(() => {
-    return Array.from(
-      new Set(
-        events
-          .flatMap((e) => e.tags || [])
-          .map((t) => t.trim())
-          .filter(Boolean)
-      )
-    );
-  }, [events]);
+  /** TAGS extracted */
+  const allTags = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          events
+            .flatMap((e) => e.tags || [])
+            .map((t) => t.trim())
+            .filter(Boolean)
+        )
+      ),
+    [events]
+  );
 
-  /** CLIENT-SIDE FILTER + SORT */
+  /** CLIENT FILTERS */
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
+    // category filter
     if (filters.categories.length > 0) {
       result = result.filter((e) =>
         filters.categories.some(
@@ -150,12 +153,14 @@ export default function Events() {
       );
     }
 
+    // tags
     if (filters.tags.length > 0) {
       result = result.filter((e) =>
         filters.tags.every((tag) => e.tags?.includes(tag))
       );
     }
 
+    // sort
     if (sortBy === "popularity") {
       result.sort(
         (a, b) =>
@@ -166,18 +171,15 @@ export default function Events() {
         (e.maxRegistrations ?? 0) - (e.currentRegistrations ?? 0);
       result.sort((a, b) => remaining(b) - remaining(a));
     } else if (sortBy === "date") {
-      result.sort((a, b) => {
-        const da = a.startDate ? +new Date(a.startDate) : 0;
-        const db = b.startDate ? +new Date(b.startDate) : 0;
-        return da - db;
-      });
+      result.sort(
+        (a, b) =>
+          (a.startDate ? +new Date(a.startDate) : 0) -
+          (b.startDate ? +new Date(b.startDate) : 0)
+      );
     }
 
     return result;
   }, [events, filters.categories, filters.tags, sortBy]);
-
-  const currentPage = pagination?.currentPage ?? page;
-  const totalPages = pagination?.totalPages ?? 1;
 
   const handleClearFilters = () => {
     setFilters({
@@ -190,24 +192,18 @@ export default function Events() {
     setPage(1);
   };
 
-  const handleCategoryPillSelect = (cat: string) => {
-    setSelectedCategory(cat);
-    setPage(1);
-  };
-
   return (
     <div className="space-y-6 animate-fadeIn">
-
-      {/* Header */}
-      <div>
+      {/* HEADER */}
+      <div className="transition-all duration-200">
         <h1 className="text-3xl font-semibold text-gray-900">Explore Events</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <p className="text-sm text-gray-500 mt-1">
           Find workshops, cultural events, seminars and more.
         </p>
       </div>
 
-      {/* Search + Sort + View Toggle */}
-      <div className="flex flex-col gap-3 rounded-xl bg-white border border-gray-200 shadow-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* SEARCH + SORT + VIEW + MOBILE FILTER BUTTON */}
+      <div className="flex flex-col gap-3 bg-white border border-gray-200 rounded-xl shadow-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-200">
         <div className="w-full sm:max-w-md">
           <SearchBar
             value={searchInput}
@@ -217,22 +213,33 @@ export default function Events() {
             }}
           />
         </div>
-        <div className="flex items-center justify-between gap-3 sm:justify-end">
+
+        <div className="flex items-center gap-3 justify-between sm:justify-end">
+          {/* MOBILE ONLY FILTER BUTTON */}
+          <button
+            onClick={() => setIsFiltersOpen(true)}
+            className="sm:hidden inline-flex items-center gap-2 border border-gray-200 bg-white px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 active:scale-95 transition-all duration-150"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+          </button>
+
           <SortDropdown value={sortBy} onChange={setSortBy} />
           <ViewToggle mode={viewMode} onChange={setViewMode} />
         </div>
       </div>
 
-      {/* Category Pills */}
       <CategoryFilter
         active={selectedCategory}
-        onSelect={handleCategoryPillSelect}
+        onSelect={(c) => {
+          setSelectedCategory(c);
+          setPage(1);
+        }}
       />
 
-      {/* Main Layout */}
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Sidebar */}
-        <div className="w-full lg:w-64 lg:flex-none">
+        {/* DESKTOP SIDEBAR */}
+        <div className="hidden lg:block lg:w-64 lg:flex-none">
           <EventFiltersSidebar
             value={filters}
             availableTags={allTags}
@@ -241,48 +248,49 @@ export default function Events() {
           />
         </div>
 
-        {/* Right: Results */}
+        {/* RESULTS */}
         <div className="flex-1">
-
-          {/* Summary */}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+          {/* SUMMARY */}
+          <div className="text-xs text-gray-600 mb-3 flex items-center justify-between gap-2 transition-opacity duration-200">
             <span>
-              Showing <span className="font-medium">{filteredEvents.length}</span>{" "}
+              Showing{" "}
+              <span className="font-medium">{filteredEvents.length}</span>{" "}
               events
             </span>
-            <span className="hidden sm:inline">
-              Page {currentPage} of {totalPages}
-            </span>
+            {pagination && (
+              <span className="hidden sm:inline">
+                Page {pagination.currentPage} of {pagination.totalPages}
+              </span>
+            )}
           </div>
 
-          {/* Error */}
+          {/* ERROR */}
           {error && (
-            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+            <div className="border border-red-200 bg-red-50 px-4 py-3 rounded-lg text-red-700 text-xs mb-3 animate-slideUp">
               {error}
             </div>
           )}
 
-          {/* Loading */}
-          {isLoading ? (
+          {/* LOADING / EMPTY / RESULTS */}
+          {isLoading && page === 1 ? (
             <div
-              className={
+              className={`${
                 viewMode === "grid"
-                  ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   : "space-y-3"
-              }
+              } animate-fadeIn`}
             >
-              {Array.from({ length: PAGE_SIZE }).map((_, idx) => (
-                <Skeleton key={idx} className="h-40 w-full rounded-xl" />
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full rounded-xl" />
               ))}
             </div>
           ) : filteredEvents.length === 0 ? (
-            // Empty state
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
-              <p className="text-sm font-semibold text-gray-800">
-                No events match your search or filters
+            <div className="text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl px-6 py-10 animate-scaleIn">
+              <p className="font-semibold text-sm text-gray-800">
+                No events match your filters
               </p>
-              <p className="mt-1 text-xs text-gray-600">
-                Try changing your filters or keywords.
+              <p className="text-xs text-gray-600 mt-1">
+                Try changing keywords or categories.
               </p>
               <Button
                 variant="outline"
@@ -290,18 +298,19 @@ export default function Events() {
                 className="mt-4"
                 onClick={handleClearFilters}
               >
-                Clear filters
+                Clear Filters
               </Button>
             </div>
           ) : (
             <>
-              {/* Cards */}
+              {/* key={viewMode} forces a soft re-mount so the view change animates */}
               <div
-                className={
+                key={viewMode}
+                className={`${
                   viewMode === "grid"
-                    ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                     : "space-y-3"
-                }
+                } animate-fadeIn transition-all duration-200`}
               >
                 {filteredEvents.map((event) => (
                   <EventCard
@@ -311,10 +320,55 @@ export default function Events() {
                   />
                 ))}
               </div>
+
+              {/* SKELETONS FOR INFINITE SCROLL */}
+              {isLoading && page > 1 && (
+                <div className="mt-4 animate-fadeIn">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <Skeleton
+                      key={idx}
+                      className="h-28 w-full rounded-xl mb-3"
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* MOBILE FILTER DRAWER */}
+      {isFiltersOpen && (
+        <div className="fixed inset-0 z-40 flex lg:hidden">
+          {/* BACKDROP */}
+          <div
+            className="absolute inset-0 bg-black/40 animate-fadeIn"
+            onClick={() => setIsFiltersOpen(false)}
+          />
+
+          {/* PANEL */}
+          <div className="relative ml-auto bg-white w-80 max-w-full h-full shadow-xl p-4 animate-slideRight">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="font-semibold text-sm text-gray-900">Filters</h2>
+              <button
+                onClick={() => setIsFiltersOpen(false)}
+                className="p-1 rounded-md text-gray-600 hover:bg-gray-100 active:scale-95 transition-all duration-150"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto h-full">
+              <EventFiltersSidebar
+                value={filters}
+                availableTags={allTags}
+                onChange={setFilters}
+                onClear={handleClearFilters}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

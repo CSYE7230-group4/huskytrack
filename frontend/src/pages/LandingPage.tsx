@@ -30,6 +30,10 @@ export default function LandingPage() {
           <Link to="/auth/login">
             <Button className="px-8 py-3 text-lg">Explore</Button>
           </Link>
+          
+          <Link to="/app">
+            <Button className="px-8 py-3 text-lg">Dashboard</Button>
+          </Link>
         </div>
       </section>
 
