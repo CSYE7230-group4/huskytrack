@@ -8,6 +8,13 @@ const eventRepository = require('../repositories/eventRepository');
 const { EventStatus } = require('../models/Event');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
+const {
+  sendEventUpdateEmail,
+  sendEventCancellationEmail
+} = require('../services/notificationService');
+const eventRegistrationRepository = require('../repositories/eventRegistrationRepository');
+
+
 class EventService {
   /**
    * Valid status transitions
@@ -206,15 +213,40 @@ class EventService {
     }
 
     try {
-      return await eventRepository.update(eventId, updateData);
-    } catch (error) {
-      if (error.name === 'ValidationError') {
-        throw new ValidationError(this.formatMongooseErrors(error));
-      }
-      throw error;
-    }
-  }
+  const updatedEvent = await eventRepository.update(eventId, updateData);
 
+    // === SEND EVENT UPDATE EMAIL ===
+    try {
+      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
+        status: 'REGISTERED'
+      });
+
+      for (const attendee of attendees.registrations) {
+        await sendEventUpdateEmail({
+          to: attendee.user.email,
+          userName: attendee.user.firstName,
+          eventName: updatedEvent.title,
+          eventDate: updatedEvent.startDate,
+          eventLocation: updatedEvent.location,
+          eventId: updatedEvent._id
+        });
+      }
+    } catch (emailErr) {
+      console.error("Event update email failed:", emailErr);
+    }
+    // === END EMAIL ===
+
+    return updatedEvent;
+
+     } catch (error) {
+    {
+          if (error.name === 'ValidationError') {
+            throw new ValidationError(this.formatMongooseErrors(error));
+          }
+          throw error;
+        }
+      }
+    }
   /**
    * Delete event
    * @param {String} eventId - Event ID
@@ -306,7 +338,31 @@ class EventService {
     }
 
     // TODO: Trigger notifications to registered users
-    return await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
+    const cancelledEvent = await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
+
+    // === SEND EVENT CANCELLATION EMAIL ===
+    try {
+      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
+        status: 'REGISTERED'
+      });
+
+      for (const attendee of attendees.registrations) {
+        await sendEventCancellationEmail({
+          to: attendee.user.email,
+          userName: attendee.user.firstName,
+          eventName: cancelledEvent.title,
+          eventDate: cancelledEvent.startDate,
+          eventLocation: cancelledEvent.location,
+          eventId: cancelledEvent._id
+        });
+      }
+    } catch (emailErr) {
+      console.error("Event cancellation email failed:", emailErr);
+    }
+    // === END EMAIL ===
+
+    return cancelledEvent;
+
   }
 
   /**

@@ -6,6 +6,11 @@
 
 const eventService = require('./eventService');
 
+const {
+  sendEventReminderEmail
+} = require('./notificationService');
+
+
 class EventScheduler {
   constructor() {
     this.intervalId = null;
