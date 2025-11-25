@@ -21,6 +21,7 @@ interface SidebarProps {
   availableTags: string[];
   onChange: (next: FiltersState) => void;
   onClear?: () => void; // optional for safety
+  hasActiveFilters?: boolean; // optional to conditionally show clear button
 }
 
 export default function EventFiltersSidebar({
@@ -28,6 +29,7 @@ export default function EventFiltersSidebar({
   availableTags,
   onChange,
   onClear = () => {}, // default to prevent "undefined"
+  hasActiveFilters,
 }: SidebarProps) {
   // ------------------------------------------------------------
   // local UI state
@@ -74,14 +76,16 @@ export default function EventFiltersSidebar({
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
 
-        <button
-          type="button"
-          onClick={onClear}
-          className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
-        >
-          <X className="h-3 w-3" />
-          Clear all
-        </button>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+          >
+            <X className="h-3 w-3" />
+            Clear all
+          </button>
+        )}
       </div>
 
       <div className="space-y-3 text-xs text-gray-700">
