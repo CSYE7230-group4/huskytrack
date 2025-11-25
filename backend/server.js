@@ -6,6 +6,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+const emailPreviewRoute = require('./src/routes/emailPreviewRoute');
+
 // Custom imports
 const database = require('./src/config/database');
 const eventScheduler = require('./src/services/eventScheduler');
@@ -71,6 +73,10 @@ app.get('/health', async (req, res) => {
     });
 });
 
+// Email template preview route
+app.use('/api/dev', emailPreviewRoute);
+
+
 app.use('/api/v1', require('./src/routes'));
 
 // 404 handler
@@ -105,6 +111,35 @@ const startServer = async () => {
         process.exit(1);
     }
 };
+// Routes
+app.get('/', (req, res) => {
+    res.json({
+        message: 'HuskyTrack API is running!',
+        version: '1.0.0',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Health check
+app.get('/health', async (req, res) => {
+    const dbHealth = await database.healthCheck();
+    res.status(dbHealth.status === 'healthy' ? 200 : 503).json({
+        status: dbHealth.status === 'healthy' ? 'ok' : 'error',
+        database: dbHealth,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// 👉 Add this import at the top of the file:
+// const emailPreviewRoute = require('./src/routes/emailPreviewRoute');
+
+// 👉 Add this BEFORE the /api/v1 block or before 404 handler
+app.use('/api/dev', emailPreviewRoute);
+
+// API v1 routes
+app.use('/api/v1', require('./src/routes'));
+
 
 // Start the application (only if not in test environment)
 if (process.env.NODE_ENV !== 'test') {

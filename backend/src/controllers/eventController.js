@@ -6,6 +6,18 @@
 const eventService = require('../services/eventService');
 const { asyncHandler } = require('../utils/errors');
 
+// NEW REQUIRED IMPORTS (unchanged ones kept)
+const {
+  sendRegistrationConfirmationEmail,
+  sendEventUpdateEmail,
+  sendEventCancellationEmail,
+  sendEventReminderEmail
+} = require('../services/notificationService');
+
+// NEW REQUIRED IMPORT
+const registrationService = require('../services/registrationService');
+
+
 /**
  * Create new event
  * POST /api/v1/events
@@ -23,6 +35,7 @@ const createEvent = asyncHandler(async (req, res) => {
         data: { event }
     });
 });
+
 
 /**
  * Get all events with filters and pagination
@@ -42,7 +55,6 @@ const getEvents = asyncHandler(async (req, res) => {
         sort = 'startDate'
     } = req.query;
 
-    // Build filters
     const filters = {};
     if (category) filters.category = category;
     if (status) filters.status = status;
@@ -50,7 +62,6 @@ const getEvents = asyncHandler(async (req, res) => {
     if (startDate) filters.startDate = { $gte: new Date(startDate) };
     if (endDate) filters.endDate = { $lte: new Date(endDate) };
 
-    // Build sort
     const sortObj = {};
     if (sort.startsWith('-')) {
         sortObj[sort.substring(1)] = -1;
@@ -71,6 +82,7 @@ const getEvents = asyncHandler(async (req, res) => {
         data: result
     });
 });
+
 
 /**
  * Get upcoming events
@@ -100,6 +112,7 @@ const getUpcomingEvents = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
  * Get event by ID
  * GET /api/v1/events/:id
@@ -117,10 +130,9 @@ const getEventById = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
  * Get events by organizer
- * GET /api/v1/events/organizer/:organizerId
- * Access: Organizer (own events), Admin (all events)
  */
 const getEventsByOrganizer = asyncHandler(async (req, res) => {
     const { organizerId } = req.params;
@@ -130,7 +142,6 @@ const getEventsByOrganizer = asyncHandler(async (req, res) => {
         limit = 20
     } = req.query;
 
-    // Check authorization - only organizer themselves or admin can view
     if (organizerId !== requesterId && req.user.role !== 'ADMIN') {
         return res.status(403).json({
         success: false,
@@ -151,10 +162,9 @@ const getEventsByOrganizer = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Get my events (current user's events)
- * GET /api/v1/events/my-events
- * Access: ORGANIZER, ADMIN
+ * Get my events
  */
 const getMyEvents = asyncHandler(async (req, res) => {
     const organizerId = req.user.id;
@@ -176,10 +186,9 @@ const getMyEvents = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Get my draft events (current user's draft events)
- * GET /api/v1/organizer/events/drafts
- * Access: ORGANIZER, ADMIN
+ * Get my draft events
  */
 const getMyDraftEvents = asyncHandler(async (req, res) => {
     const organizerId = req.user.id;
@@ -201,17 +210,38 @@ const getMyDraftEvents = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Update event
+ * UPDATE EVENT (EMAIL LOGIC ADDED HERE)
  * PUT /api/v1/events/:id
- * Access: Organizer (own events), Admin
  */
 const updateEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const updateData = req.body;
 
+    // 1. Update event
     const event = await eventService.updateEvent(id, updateData, userId);
+
+    // 2. Fetch attendees (registered users)
+    const attendeesResult = await registrationService.getEventAttendees(id, userId, {}, { page: 1, limit: 500 });
+    const attendees = attendeesResult?.registrations || [];
+
+    // 3. Send update email to each attendee
+    for (const reg of attendees) {
+        const attendee = reg.user;
+        if (!attendee || !attendee.email) continue;
+
+        await sendEventUpdateEmail({
+            to: attendee.email,
+            userName: attendee.firstName || attendee.name || "User",
+            eventName: event.title,
+            eventDate: new Date(event.startDate).toLocaleString(),
+            eventLocation: event.location?.name || "Campus",
+            eventUrl: `https://huskytrack.app/events/${event._id}`,
+            unsubscribeUrl: "https://huskytrack.app/unsubscribe/preview"
+        });
+    }
 
     res.status(200).json({
         success: true,
@@ -220,10 +250,9 @@ const updateEvent = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
  * Delete event
- * DELETE /api/v1/events/:id
- * Access: Organizer (own events), Admin
  */
 const deleteEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -238,10 +267,9 @@ const deleteEvent = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Publish event (DRAFT -> PUBLISHED)
- * POST /api/v1/events/:id/publish
- * Access: Organizer (own events)
+ * Publish event
  */
 const publishEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -256,6 +284,7 @@ const publishEvent = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
  * Cancel event
  * POST /api/v1/events/:id/cancel
@@ -265,19 +294,46 @@ const cancelEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
+    // 1. Cancel the event
     const event = await eventService.cancelEvent(id, userId);
+
+    // 2. Fetch attendees (registered users)
+    const attendeesResult = await registrationService.getEventAttendees(
+        id,
+        userId,
+        { status: "REGISTERED" },  // only registered users get cancellation email
+        { page: 1, limit: 500 }
+    );
+
+    const attendees = attendeesResult?.registrations || [];
+
+    // 3. Send cancellation email to each attendee
+    for (const reg of attendees) {
+        const attendee = reg.user;
+        if (!attendee || !attendee.email) continue;
+
+        await sendEventCancellationEmail({
+            to: attendee.email,
+            userName: attendee.firstName || attendee.name || "User",
+            eventName: event.title,
+            eventDate: new Date(event.startDate).toLocaleString(),
+            eventLocation: event.location?.name || "Campus",
+            eventUrl: `https://huskytrack.app/events/${event._id}`,
+            unsubscribeUrl: "https://huskytrack.app/unsubscribe/preview"
+        });
+    }
 
     res.status(200).json({
         success: true,
-        message: 'Event cancelled successfully',
+        message: "Event cancelled successfully",
         data: { event }
     });
 });
 
+
+
 /**
  * Search events
- * GET /api/v1/events/search
- * Access: Public
  */
 const searchEvents = asyncHandler(async (req, res) => {
     const {
@@ -292,14 +348,9 @@ const searchEvents = asyncHandler(async (req, res) => {
 
     const filters = {};
     if (category) filters.category = category;
-    
-    // Add date range filters
-    if (startDate) {
-        filters.startDate = { $gte: new Date(startDate) };
-    }
-    if (endDate) {
-        filters.endDate = { $lte: new Date(endDate) };
-    }
+
+    if (startDate) filters.startDate = { $gte: new Date(startDate) };
+    if (endDate) filters.endDate = { $lte: new Date(endDate) };
 
     const options = {
         page: parseInt(page),
@@ -315,10 +366,9 @@ const searchEvents = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
  * Get events by category
- * GET /api/v1/events/category/:category
- * Access: Public
  */
 const getEventsByCategory = asyncHandler(async (req, res) => {
     const { category } = req.params;
@@ -340,10 +390,9 @@ const getEventsByCategory = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Check if user can register for event
- * GET /api/v1/events/:id/can-register
- * Access: Authenticated
+ * Check if user can register
  */
 const canUserRegister = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -357,10 +406,9 @@ const canUserRegister = asyncHandler(async (req, res) => {
     });
 });
 
+
 /**
- * Get event capacity information
- * GET /api/v1/events/:id/capacity
- * Access: Public
+ * Get event capacity
  */
 const getEventCapacity = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -372,6 +420,7 @@ const getEventCapacity = asyncHandler(async (req, res) => {
         data: capacity
     });
 });
+
 
 module.exports = {
     createEvent,
@@ -390,4 +439,3 @@ module.exports = {
     canUserRegister,
     getEventCapacity
 };
-
