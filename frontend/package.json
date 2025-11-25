@@ -12,7 +12,11 @@
     "docs:markdown": "typedoc --plugin typedoc-plugin-markdown --out docs-md"
   },
   "dependencies": {
+    "@tiptap/extension-placeholder": "^3.11.0",
+    "@tiptap/react": "^3.11.0",
+    "@tiptap/starter-kit": "^3.11.0",
     "axios": "^1.13.2",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.554.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

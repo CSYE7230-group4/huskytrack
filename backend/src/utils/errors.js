@@ -91,6 +91,46 @@ class InternalServerError extends ApiError {
 }
 
 /**
+ * Registration-specific errors
+ */
+
+/**
+ * Registration Already Exists Error (409 Conflict)
+ */
+class RegistrationExistsError extends ConflictError {
+    constructor(message = 'You are already registered for this event') {
+        super(message);
+    }
+}
+
+/**
+ * Event Capacity Exceeded Error (409 Conflict)
+ */
+class CapacityExceededError extends ConflictError {
+    constructor(message = 'Event is at full capacity') {
+        super(message);
+    }
+}
+
+/**
+ * Registration Not Found Error (404 Not Found)
+ */
+class RegistrationNotFoundError extends NotFoundError {
+    constructor(message = 'Registration not found') {
+        super(message);
+    }
+}
+
+/**
+ * Event Registration Closed Error (400 Bad Request)
+ */
+class RegistrationClosedError extends BadRequestError {
+    constructor(message = 'Registration for this event is closed') {
+        super(message);
+    }
+}
+
+/**
  * Success response formatter
  * @param {Object} res - Express response object
  * @param {Number} statusCode - HTTP status code
@@ -234,6 +274,10 @@ module.exports = {
     ConflictError,
     TooManyRequestsError,
     InternalServerError,
+    RegistrationExistsError,
+    CapacityExceededError,
+    RegistrationNotFoundError,
+    RegistrationClosedError,
     sendSuccess,
     sendError,
     asyncHandler,
