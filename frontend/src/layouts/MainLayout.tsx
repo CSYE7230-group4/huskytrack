@@ -1,5 +1,6 @@
 // src/layouts/MainLayout.tsx
-import { Outlet, useNavigate } from "react-router-dom";
+
+import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import SidebarLayout from "./SidebarLayout";
 import Footer from "../components/common/Footer";
@@ -15,7 +16,6 @@ export default function MainLayout() {
       navigate("/auth/login");
     } catch (error) {
       console.error("Logout error:", error);
-      // Still navigate to login even if logout API call fails
       navigate("/auth/login");
     }
   };
@@ -23,7 +23,7 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen flex bg-background">
 
-      {/* Sidebar (desktop only) */}
+      {/* Sidebar */}
       <SidebarLayout />
 
       {/* Right Section */}
@@ -35,8 +35,12 @@ export default function MainLayout() {
 
             {/* Brand */}
             <div className="flex items-center gap-2">
-              <img src="src\assets\NewLogoHuskyTrack.svg" alt="Husky logo" className="h-10 w-auto" />
-              <span className="text-xl font-semibold text-primary tracking-tight" >
+              <img
+                src="src/assets/NewLogoHuskyTrack.svg"
+                alt="Husky logo"
+                className="h-10 w-auto"
+              />
+              <span className="text-xl font-semibold text-primary tracking-tight">
                 HuskyTrack
               </span>
             </div>
@@ -44,12 +48,30 @@ export default function MainLayout() {
             {/* User Section */}
             {user && (
               <div className="flex items-center gap-4">
+
+                {/* Optional: Organizer Shortcut */}
+                <NavLink
+                  to="/app/organizer"
+                  className={({ isActive }) =>
+                    `text-sm px-3 py-2 rounded-lg transition ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`
+                  }
+                >
+                  Organizer
+                </NavLink>
+
+                {/* User Info */}
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">
                     {user.firstName} {user.lastName}
                   </p>
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
+
+                {/* Logout */}
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -63,14 +85,12 @@ export default function MainLayout() {
           </div>
         </header>
 
-        {/* Main Page Content */}
+        {/* Main Content */}
         <main className="max-w-6xl mx-auto px-6 py-8">
           <Outlet />
         </main>
 
         <Footer />
-
-
       </div>
     </div>
   );
