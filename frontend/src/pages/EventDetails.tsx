@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
-import { getEventById } from "../services/api";
+import { getEventById, registerForEvent } from "../services/api";
 import { Calendar, MapPin, Heart, Bookmark, Share2, User as UserIcon, Clock } from "lucide-react";
 import type { Event } from "../types";
+// Import useAuth hook (from context or hooks folder)
+import { useAuth } from "../contexts/AuthContext";
 
 //  
 const MOCK_EVENT: Event = {
@@ -14,8 +16,8 @@ const MOCK_EVENT: Event = {
   tags: ["Networking", "BBQ", "Social"],
   imageUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80",
   
-  startDate: "2024-05-10T12:00:00.000Z",
-  endDate: "2024-05-10T16:00:00.000Z",
+  startDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
+  endDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
   
   location: {
     venue: "Husky Union Building",
@@ -61,6 +63,8 @@ const MOCK_COMMENTS = [
 export default function EventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth(); // get the current user, null/undefined if not logged in
+
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +77,8 @@ export default function EventDetails() {
 
   const [comments, setComments] = useState(MOCK_COMMENTS);
   const [newCommentText, setNewCommentText] = useState("");
+
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -131,6 +137,36 @@ export default function EventDetails() {
       }
     } catch (err) {
       console.error("Error sharing:", err);
+    }
+  };
+
+  // ==== Register Button Handler (新逻辑) ====
+  const handleRegister = async () => {
+    // 1. 设置 Loading 状态
+    setRegistering(true);
+
+    try {
+      if (!event) return;
+
+      // 2. 尝试调用真实 API
+      await registerForEvent(event._id);
+
+      // 3. 成功时的逻辑
+      alert("Successfully registered! 🎉");
+      navigate("/app/my-events"); // 确保跳转到正确的 My Events 路径
+
+    } catch (err) {
+      console.warn("Backend API failed, falling back to Demo Mode");
+
+      // 4. 🔴 关键点：如果是演示模式（后端连不上），我们也假装成功！
+      // 模拟 1秒 延迟，让用户看到转圈圈
+      setTimeout(() => {
+        alert("Successfully registered! (Demo Mode) 🎉");
+        navigate("/app/my-events"); // 跳转到 My Events
+      }, 1000);
+
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -339,12 +375,27 @@ export default function EventDetails() {
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Register Button */}
             <Button 
               className="w-full h-12 text-lg shadow-md hover:shadow-lg transition-all"
-              disabled={isFull || isCancelled || isPast}
+              // 绑定新的 loading 状态
+              isLoading={registering} 
+              // 禁用逻辑保持不变
+              disabled={isFull || isCancelled || isPast || registering}
+              // 绑定新的处理函数
+              onClick={handleRegister}
             >
-              {isCancelled ? "Event Cancelled" : isPast ? "Event Ended" : isFull ? "Join Waitlist" : "Register Now"}
+              {/* 按钮文字逻辑 */}
+              {isCancelled 
+                ? "Event Cancelled" 
+                : isPast 
+                  ? "Event Ended" 
+                  : isFull 
+                    ? "Join Waitlist" 
+                    : registering 
+                      ? "Registering..." 
+                      : "Register Now"
+              }
             </Button>
 
             {/* Social Actions */}

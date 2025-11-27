@@ -13,6 +13,7 @@ import Events from "../pages/Events";
 import EventDetails from "../pages/EventDetails";
 import Profile from "../pages/Profile";
 import UiGuide from "../pages/UiGuide";
+import MyEvents from "../pages/MyEvents"; // <-- Added import
 
 // Auth Pages
 import Login from "../pages/Login";
@@ -21,7 +22,7 @@ import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
-// Event Create / Edit (Task 2.7)
+// Event Create / Edit
 import CreateEvent from "../pages/CreateEvent";
 import EditEvent from "../pages/EditEvent";
 
@@ -76,8 +77,10 @@ const router = createBrowserRouter([
 
       // UI Guide
       { path: "ui-guide", element: <UiGuide /> },
-      
-      {  path: "organizer",  element: <OrganizerDashboard />,},
+
+      { path: "organizer", element: <OrganizerDashboard /> },
+      // MY EVENTS (Protected, inside /app)
+      { path: "my-events", element: <MyEvents /> },
     ],
   },
 
