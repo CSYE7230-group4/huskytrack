@@ -6,6 +6,7 @@
 
 const eventRepository = require('../repositories/eventRepository');
 const { EventStatus } = require('../models/Event');
+const notificationService = require('./notificationService');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
 class EventService {
@@ -206,12 +207,50 @@ class EventService {
     }
 
     try {
-      return await eventRepository.update(eventId, updateData);
+      const updatedEvent = await eventRepository.update(eventId, updateData);
+      
+      // Notify registered users about significant updates (if event is published)
+      if (event.status === EventStatus.PUBLISHED && event.currentRegistrations > 0) {
+        // Check if significant fields were updated
+        const significantFields = ['title', 'startDate', 'endDate', 'location'];
+        const hasSignificantChanges = significantFields.some(field => 
+          updateData[field] !== undefined && 
+          JSON.stringify(updateData[field]) !== JSON.stringify(event[field])
+        );
+        
+        if (hasSignificantChanges) {
+          // Trigger notification asynchronously (don't block on failure)
+          this.notifyEventUpdate(eventId, updateData)
+            .catch(err => console.error('Failed to send event update notifications:', err));
+        }
+      }
+      
+      return updatedEvent;
     } catch (error) {
       if (error.name === 'ValidationError') {
         throw new ValidationError(this.formatMongooseErrors(error));
       }
       throw error;
+    }
+  }
+  
+  /**
+   * Helper method to notify users about event updates
+   * @param {String} eventId - Event ID
+   * @param {Object} updateData - Updated fields
+   */
+  async notifyEventUpdate(eventId, updateData) {
+    try {
+      const changes = [];
+      if (updateData.title) changes.push('Event title updated');
+      if (updateData.startDate) changes.push('Start time changed');
+      if (updateData.endDate) changes.push('End time changed');
+      if (updateData.location) changes.push('Location changed');
+      
+      const changeDescription = changes.join(', ');
+      await notificationService.notifyEventUpdate(eventId, changeDescription);
+    } catch (error) {
+      console.error('Error notifying event update:', error);
     }
   }
 
@@ -305,8 +344,15 @@ class EventService {
       throw new ValidationError('Event is already cancelled');
     }
 
-    // TODO: Trigger notifications to registered users
-    return await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
+    const cancelledEvent = await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
+    
+    // Trigger notifications to registered users (don't block on failure)
+    if (event.currentRegistrations > 0) {
+      notificationService.notifyEventCancellation(eventId)
+        .catch(err => console.error('Failed to send event cancellation notifications:', err));
+    }
+    
+    return cancelledEvent;
   }
 
   /**

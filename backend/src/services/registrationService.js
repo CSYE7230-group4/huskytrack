@@ -9,6 +9,7 @@ const eventRepository = require('../repositories/eventRepository');
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
 const { Event, EventStatus } = require('../models/Event');
 const { Notification, NotificationType } = require('../models/Notification');
+const notificationService = require('./notificationService');
 const mongoose = require('mongoose');
 const {
   NotFoundError,
@@ -518,19 +519,19 @@ class RegistrationService {
 
   async sendRegistrationConfirmationNotification(userId, eventId, registrationId) {
     try {
-      const event = await Event.findById(eventId).select('title startDate').lean();
+      const event = await Event.findById(eventId).select('title startDate location').lean();
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       
-      await Notification.create({
-        user: userId,
+      await notificationService.createNotification({
+        userId,
         type: NotificationType.REGISTRATION_CONFIRMED,
-        title: 'Registration Confirmed',
-        message: `You have successfully registered for "${event.title}"`,
-        event: eventId,
-        registration: registrationId,
-        actionUrl: `/events/${eventId}`,
-        metadata: {
+        eventId,
+        data: {
           eventTitle: event.title,
-          eventDate: event.startDate
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
     } catch (error) {
@@ -540,19 +541,20 @@ class RegistrationService {
 
   async sendWaitlistNotification(userId, eventId, registrationId, position) {
     try {
-      const event = await Event.findById(eventId).select('title startDate').lean();
+      const event = await Event.findById(eventId).select('title startDate location').lean();
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       
-      await Notification.create({
-        user: userId,
+      await notificationService.createNotification({
+        userId,
         type: NotificationType.REGISTRATION_WAITLISTED,
-        title: 'Added to Waitlist',
-        message: `You are #${position} on the waitlist for "${event.title}"`,
-        event: eventId,
-        registration: registrationId,
-        actionUrl: `/events/${eventId}`,
-        metadata: {
+        eventId,
+        data: {
           eventTitle: event.title,
-          waitlistPosition: position
+          startDate: event.startDate,
+          location: event.location,
+          waitlistPosition: position,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
     } catch (error) {
@@ -562,19 +564,19 @@ class RegistrationService {
 
   async sendWaitlistPromotionNotification(userId, eventId, registrationId) {
     try {
-      const event = await Event.findById(eventId).select('title startDate').lean();
+      const event = await Event.findById(eventId).select('title startDate location').lean();
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       
-      await Notification.create({
-        user: userId,
+      await notificationService.createNotification({
+        userId,
         type: NotificationType.REGISTRATION_APPROVED,
-        title: 'Promoted from Waitlist',
-        message: `A spot opened up! You are now registered for "${event.title}"`,
-        event: eventId,
-        registration: registrationId,
-        actionUrl: `/events/${eventId}`,
-        metadata: {
+        eventId,
+        data: {
           eventTitle: event.title,
-          promotedFrom: 'waitlist'
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
     } catch (error) {
