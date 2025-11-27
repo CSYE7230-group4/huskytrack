@@ -54,4 +54,54 @@ export interface Event {
   isBookmarked?: boolean;
   isLiked?: boolean;
   likes?: number;
+  
+}
+
+// =============================
+// Registration Entity
+// =============================
+export interface Registration {
+  _id: string;
+  event: Event; // 
+  user: string; // 
+  status: 'REGISTERED' | 'WAITLISTED' | 'CANCELLED' | 'ATTENDED';
+  createdAt: string;
+}
+
+// =============================
+// Notification Preferences
+// =============================
+
+export interface NotificationPreferences {
+  emailUpdates: boolean;
+  pushNotifications: boolean;
+  reminderTime: 15 | 30 | 60; // minutes before event
+}
+
+// =============================
+// User Profile Extension
+// =============================
+
+export interface UserProfile {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  university: string;
+  avatar?: string;
+  bio?: string;
+
+  // New fields for Task 3.5
+  interests: string[];
+  preferences: NotificationPreferences;
+}
+
+// =============================
+// Password Change Payload
+// =============================
+
+export interface PasswordChangePayload {
+  currentPassword?: string; // Backend might verify this
+  newPassword: string;
+  confirmPassword: string;
 }
