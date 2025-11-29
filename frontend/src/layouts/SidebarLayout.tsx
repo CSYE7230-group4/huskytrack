@@ -28,6 +28,18 @@ export default function SidebarLayout() {
           Dashboard
         </NavLink>
 
+        <NavLink
+          to="/app/my-events"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <Calendar className="w-4 h-4" />
+          My Events
+        </NavLink>
+
         {/* Events */}
         <NavLink
           to="/app/events"
