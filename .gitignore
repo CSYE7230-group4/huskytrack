@@ -142,6 +142,9 @@ vite.config.ts.timestamp-*
 tasks/*
 design/diagrams/markdowns/*
 backend/*.md
+backend/DOCUMENTATION/*
+backend/GUIDES-MARKDOWN/*
+backend/TASK-COMPLETION-MARKDOWN/*
 
 # TypeDoc generated documentation
 frontend/docs/

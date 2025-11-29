@@ -130,7 +130,7 @@ const getEventsQuerySchema = z.object({
     capacity: z.enum(['available', 'full']).optional(),
     includePast: z.string().transform((val) => val === 'true').optional(),
     isPublic: z.string().transform((val) => val === 'true').optional(),
-    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created']).optional(),
+    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created', 'startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'currentRegistrations', '-currentRegistrations']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional()
   })
 });
@@ -160,7 +160,7 @@ const searchEventsSchema = z.object({
     location: z.string().optional(),
     capacity: z.enum(['available', 'full']).optional(),
     includePast: z.string().transform((val) => val === 'true').optional(),
-    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created']).optional(),
+    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created', 'startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'currentRegistrations', '-currentRegistrations']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional()
   }).refine(
     (data) => {

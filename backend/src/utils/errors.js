@@ -3,40 +3,184 @@
  * Provides custom error types for better error handling
  */
 
-class ValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ValidationError';
-    this.statusCode = 400;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.statusCode = 404;
-  }
-}
-
-class ForbiddenError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ForbiddenError';
-    this.statusCode = 403;
-  }
-}
-
-class ConflictError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ConflictError';
-    this.statusCode = 409;
-  }
+/**
+ * Base API Error class
+ * All custom errors extend this class
+ */
+class ApiError extends Error {
+    constructor(statusCode, message, errors = null) {
+        super(message);
+        this.name = 'ApiError';
+        this.statusCode = statusCode;
+        this.errors = errors;
+        Error.captureStackTrace(this, this.constructor);
+    }
 }
 
 /**
- * Async handler wrapper to catch errors in async route handlers
+ * 400 Bad Request
+ */
+class BadRequestError extends ApiError {
+    constructor(message = 'Bad Request', errors = null) {
+        super(400, message, errors);
+    }
+}
+
+/**
+ * 400 Validation Error
+ * Alias for BadRequestError with validation-specific message
+ */
+class ValidationError extends BadRequestError {
+    constructor(message = 'Validation failed', errors = null) {
+        super(message, errors);
+    }
+}
+
+/**
+ * 401 Unauthorized
+ */
+class UnauthorizedError extends ApiError {
+    constructor(message = 'Unauthorized') {
+        super(401, message);
+    }
+}
+
+/**
+ * 403 Forbidden
+ */
+class ForbiddenError extends ApiError {
+    constructor(message = 'Access denied. Insufficient permissions.') {
+        super(403, message);
+    }
+}
+
+/**
+ * 404 Not Found
+ */
+class NotFoundError extends ApiError {
+    constructor(message = 'Resource not found') {
+        super(404, message);
+    }
+}
+
+/**
+ * 409 Conflict
+ */
+class ConflictError extends ApiError {
+    constructor(message = 'Resource already exists') {
+        super(409, message);
+    }
+}
+
+/**
+ * 429 Too Many Requests
+ */
+class TooManyRequestsError extends ApiError {
+    constructor(message = 'Too many requests, please try again later', retryAfter = null) {
+        super(429, message);
+        this.retryAfter = retryAfter;
+    }
+}
+
+/**
+ * 500 Internal Server Error
+ */
+class InternalServerError extends ApiError {
+    constructor(message = 'Internal server error') {
+        super(500, message);
+    }
+}
+
+/**
+ * Registration-specific errors
+ */
+
+/**
+ * Registration Already Exists Error (409 Conflict)
+ */
+class RegistrationExistsError extends ConflictError {
+    constructor(message = 'You are already registered for this event') {
+        super(message);
+    }
+}
+
+/**
+ * Event Capacity Exceeded Error (409 Conflict)
+ */
+class CapacityExceededError extends ConflictError {
+    constructor(message = 'Event is at full capacity') {
+        super(message);
+    }
+}
+
+/**
+ * Registration Not Found Error (404 Not Found)
+ */
+class RegistrationNotFoundError extends NotFoundError {
+    constructor(message = 'Registration not found') {
+        super(message);
+    }
+}
+
+/**
+ * Event Registration Closed Error (400 Bad Request)
+ */
+class RegistrationClosedError extends BadRequestError {
+    constructor(message = 'Registration for this event is closed') {
+        super(message);
+    }
+}
+
+/**
+ * Success response formatter
+ * @param {Object} res - Express response object
+ * @param {Number} statusCode - HTTP status code
+ * @param {String} message - Success message
+ * @param {Object} data - Response data
+ */
+const sendSuccess = (res, statusCode = 200, message, data = null) => {
+    const response = {
+        success: true,
+        message
+    };
+    
+    if (data) {
+        response.data = data;
+    }
+    
+    return res.status(statusCode).json(response);
+};
+
+/**
+ * Error response formatter
+ * @param {Object} res - Express response object
+ * @param {Number} statusCode - HTTP status code
+ * @param {String} message - Error message
+ * @param {Array|Object} errors - Validation errors or error details
+ */
+const sendError = (res, statusCode = 500, message, errors = null) => {
+    const response = {
+        success: false,
+        message
+    };
+    
+    if (errors) {
+        response.errors = errors;
+    }
+    
+    // Don't send stack traces in production
+    if (process.env.NODE_ENV === 'development' && errors?.stack) {
+        response.stack = errors.stack;
+    }
+    
+    return res.status(statusCode).json(response);
+};
+
+/**
+ * Handle async route errors
+ * Wraps async route handlers to catch errors
+ * @param {Function} fn - Async route handler function
+ * @returns {Function} Express middleware function
  */
 const asyncHandler = (fn) => {
   return (req, res, next) => {
@@ -57,6 +201,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(err.statusCode).json({
       success: false,
       message: err.message || 'An error occurred',
+      ...(err.errors && { errors: err.errors }),
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
   }
@@ -106,11 +251,21 @@ const errorHandler = (err, req, res, next) => {
 };
 
 module.exports = {
-  ValidationError,
-  NotFoundError,
-  ForbiddenError,
-  ConflictError,
-  asyncHandler,
-  errorHandler
+    ApiError,
+    BadRequestError,
+    ValidationError,
+    UnauthorizedError,
+    ForbiddenError,
+    NotFoundError,
+    ConflictError,
+    TooManyRequestsError,
+    InternalServerError,
+    RegistrationExistsError,
+    CapacityExceededError,
+    RegistrationNotFoundError,
+    RegistrationClosedError,
+    sendSuccess,
+    sendError,
+    asyncHandler,
+    errorHandler
 };
-
