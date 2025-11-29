@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import DashboardWidget from "./DashboardWidget";
-import { CalendarData } from "../../services/dashboardApi";
+import { CalendarData, CalendarDateInfo } from "../../services/dashboardApi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarWidgetProps {
@@ -19,9 +19,46 @@ export default function CalendarWidget({
   const dates = calendar?.dates ?? {};
   const today = new Date();
   
+  // State for showing/hiding event highlights
+  const [showEventHighlights, setShowEventHighlights] = useState(true);
+  
+  // Debug: Log calendar data to help diagnose issues
+  if (calendar && Object.keys(dates).length === 0) {
+    console.log('CalendarWidget: Received calendar data but no dates:', calendar);
+  } else if (calendar && Object.keys(dates).length > 0) {
+    const firstDateKey = Object.keys(dates)[0];
+    const firstDateValue = dates[firstDateKey];
+    console.log('CalendarWidget: Received calendar data with dates:', Object.keys(dates).slice(0, 5), '...');
+    console.log('CalendarWidget: Sample date value:', firstDateKey, '=', firstDateValue, 'Type:', typeof firstDateValue);
+    if (typeof firstDateValue === 'object' && firstDateValue !== null) {
+      console.log('CalendarWidget: Sample date structure:', JSON.stringify(firstDateValue, null, 2));
+    }
+  }
+  
   // State for current displayed month/year
   const [displayMonth, setDisplayMonth] = useState(today.getMonth());
   const [displayYear, setDisplayYear] = useState(today.getFullYear());
+  
+  // Helper to get date info (handles both old number format and new object format)
+  const getDateInfo = (dateKey: string | null): { count: number; events: Array<{ id?: string; title: string }> } | null => {
+    if (!dateKey || !dates[dateKey]) return null;
+    const value = dates[dateKey];
+    
+    // Handle backward compatibility: if it's a number, convert to new format
+    if (typeof value === 'number') {
+      return { count: value, events: [] };
+    }
+    
+    // New format with event details
+    const dateInfo = value as CalendarDateInfo;
+    
+    // Ensure events array exists and has the right structure
+    if (dateInfo && !dateInfo.events) {
+      return { count: dateInfo.count || 0, events: [] };
+    }
+    
+    return dateInfo;
+  };
 
   // Generate calendar grid for displayed month
   const calendarGrid = useMemo(() => {
@@ -166,22 +203,38 @@ export default function CalendarWidget({
               <div key={weekIdx} className="grid grid-cols-7 gap-1">
                 {week.map((day, dayIdx) => {
                   const dateKey = getDateKey(day);
-                  const hasEvent = dateKey && dates[dateKey];
+                  const dateInfo = getDateInfo(dateKey);
+                  const hasEvent = dateInfo !== null;
                   const isTodayDate = isToday(day);
+                  const shouldHighlight = hasEvent && showEventHighlights;
+                  
+                  // Build tooltip with count and event names
+                  let tooltipText: string | undefined = undefined;
+                  if (dateInfo) {
+                    if (dateInfo.events && dateInfo.events.length > 0) {
+                      const eventNames = dateInfo.events.map(e => e.title).filter(Boolean).join(', ');
+                      tooltipText = `${dateInfo.count} event${dateInfo.count === 1 ? '' : 's'}: ${eventNames}`;
+                    } else {
+                      tooltipText = `${dateInfo.count} event${dateInfo.count === 1 ? '' : 's'}`;
+                    }
+                  }
                   
                   return (
                     <div
                       key={`${weekIdx}-${dayIdx}`}
                       className={`
-                        aspect-square flex items-center justify-center text-[10px] rounded
+                        relative aspect-square flex items-center justify-center text-[10px] rounded
                         ${day === null ? "text-transparent" : ""}
                         ${isTodayDate ? "bg-primary/10 font-semibold text-primary border border-primary" : ""}
-                        ${hasEvent && !isTodayDate ? "bg-primary/5 text-primary font-medium" : ""}
-                        ${!hasEvent && !isTodayDate && day !== null ? "text-gray-600 hover:bg-gray-50" : ""}
+                        ${shouldHighlight && !isTodayDate ? "bg-primary/5 text-primary font-medium border border-primary/20" : ""}
+                        ${!shouldHighlight && !isTodayDate && day !== null ? "text-gray-600 hover:bg-gray-50" : ""}
                       `}
-                      title={hasEvent ? `${dates[dateKey!]} event${dates[dateKey!] === 1 ? "" : "s"}` : undefined}
+                      title={tooltipText}
                     >
                       {day}
+                      {shouldHighlight && (
+                        <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-primary"></span>
+                      )}
                     </div>
                   );
                 })}
@@ -193,12 +246,15 @@ export default function CalendarWidget({
           <div className="pt-2 border-t border-gray-100 space-y-2">
             {/* Legend */}
             {hasEvents && (
-              <div className="flex items-center gap-3 text-[10px] text-gray-500">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-primary/5 border border-primary/20" />
-                  <span>Has events</span>
-                </div>
-              </div>
+              <label className="flex items-center gap-2 text-[10px] text-gray-500 cursor-pointer hover:text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={showEventHighlights}
+                  onChange={(e) => setShowEventHighlights(e.target.checked)}
+                  className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                />
+                <span>Has events</span>
+              </label>
             )}
             
             {/* Today Button */}

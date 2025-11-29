@@ -163,8 +163,10 @@ class DashboardService {
    * @returns {Promise<Object>}
    */
   async _getCalendarData(userId, now) {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfNextNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+    // Expand range to 6 months (3 months back, current month, 2 months forward)
+    // This ensures users can see events in a wider range when navigating the calendar
+    const startOfRange = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const endOfRange = new Date(now.getFullYear(), now.getMonth() + 3, 1);
 
     // Fetch all upcoming events user is registered for within range
     const registrationsPromise = eventRegistrationRepository.findByUser(userId, {
@@ -181,8 +183,8 @@ class DashboardService {
         organizer: userId,
         status: EventStatus.PUBLISHED,
         startDate: {
-          $gte: startOfMonth,
-          $lt: startOfNextNextMonth
+          $gte: startOfRange,
+          $lt: endOfRange
         }
       },
       {
@@ -199,26 +201,42 @@ class DashboardService {
       myEventsPromise
     ]);
 
+    // Debug: Log what we received
+    console.log(`[Calendar] Found ${registrations?.length || 0} registrations, ${myEventsResult?.events?.length || 0} user events`);
+    console.log(`[Calendar] Date range: ${startOfRange.toISOString()} to ${endOfRange.toISOString()}`);
+
     // Get events from registrations
+    // Note: We convert dates to Date objects for proper comparison
     const eventsFromRegs = (registrations || [])
       .filter(
-        (reg) =>
-          reg.event &&
-          reg.event.startDate &&
-          reg.event.startDate >= startOfMonth &&
-          reg.event.startDate < startOfNextNextMonth
+        (reg) => {
+          if (!reg.event || !reg.event.startDate) return false;
+          const eventDate = new Date(reg.event.startDate);
+          const inRange = eventDate >= startOfRange && eventDate < endOfRange;
+          if (!inRange && reg.event) {
+            console.log(`[Calendar] Registration event out of range: ${reg.event.title} (${reg.event.startDate})`);
+          }
+          return inRange;
+        }
       )
       .map((reg) => reg.event);
 
     // Get events created by user
+    // Note: myEventsResult already has date filtering in the query, but we double-check here
     const myEvents = (myEventsResult.events || [])
       .filter(
-        (ev) =>
-          ev &&
-          ev.startDate &&
-          ev.startDate >= startOfMonth &&
-          ev.startDate < startOfNextNextMonth
+        (ev) => {
+          if (!ev || !ev.startDate) return false;
+          const eventDate = new Date(ev.startDate);
+          const inRange = eventDate >= startOfRange && eventDate < endOfRange;
+          if (!inRange) {
+            console.log(`[Calendar] User event out of range: ${ev.title || ev._id} (${ev.startDate})`);
+          }
+          return inRange;
+        }
       );
+    
+    console.log(`[Calendar] After filtering: ${eventsFromRegs.length} from registrations, ${myEvents.length} user events`);
 
     // Merge and de-duplicate by _id
     const seen = new Set();
@@ -233,20 +251,55 @@ class DashboardService {
     }
 
     const byDate = {};
+    
+    // Debug: Log events being processed
+    console.log(`[Calendar] Processing ${allEvents.length} events for user ${userId}`);
+    
     allEvents.forEach((ev) => {
+      if (!ev.startDate) {
+        console.warn('[Calendar] Event missing startDate:', ev._id, ev.title);
+        return;
+      }
+      
       const d = new Date(ev.startDate);
+      // Validate date
+      if (isNaN(d.getTime())) {
+        console.warn('[Calendar] Invalid event date:', ev.startDate, 'for event:', ev._id, ev.title);
+        return;
+      }
+      
       // Extract date in local timezone to match frontend calendar display
       // This ensures dates are highlighted correctly regardless of timezone
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const key = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
-      byDate[key] = (byDate[key] || 0) + 1;
+      
+      // Store event info (count and titles) for each date
+      if (!byDate[key]) {
+        byDate[key] = {
+          count: 0,
+          events: []
+        };
+      }
+      byDate[key].count += 1;
+      byDate[key].events.push({
+        id: ev._id?.toString(),
+        title: ev.title || 'Untitled Event'
+      });
+      
+      // Debug: Log first few dates being added
+      if (Object.keys(byDate).length <= 5) {
+        console.log(`[Calendar] Added date key: ${key} for event: ${ev.title || ev._id}`);
+      }
     });
+    
+    // Debug: Log final result
+    console.log(`[Calendar] Final date keys:`, Object.keys(byDate).slice(0, 10));
 
     return {
-      start: startOfMonth.toISOString(),
-      end: startOfNextNextMonth.toISOString(),
+      start: startOfRange.toISOString(),
+      end: endOfRange.toISOString(),
       dates: byDate
     };
   }

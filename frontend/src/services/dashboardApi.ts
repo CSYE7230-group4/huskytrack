@@ -17,10 +17,20 @@ export interface DashboardNotification {
   actionUrl?: string;
 }
 
+export interface CalendarEventInfo {
+  id?: string;
+  title: string;
+}
+
+export interface CalendarDateInfo {
+  count: number;
+  events: CalendarEventInfo[];
+}
+
 export interface CalendarData {
   start: string;
   end: string;
-  dates: Record<string, number>;
+  dates: Record<string, CalendarDateInfo | number>; // Support both old format (number) and new format (object)
 }
 
 export interface DashboardFeedResponse {
