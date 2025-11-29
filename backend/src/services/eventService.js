@@ -9,6 +9,13 @@ const { EventStatus } = require('../models/Event');
 const notificationService = require('./notificationService');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
+const {
+  sendEventUpdateEmail,
+  sendEventCancellationEmail
+} = require('../services/notificationService');
+const eventRegistrationRepository = require('../repositories/eventRegistrationRepository');
+
+
 class EventService {
   /**
    * Valid status transitions
@@ -230,7 +237,8 @@ class EventService {
       if (error.name === 'ValidationError') {
         throw new ValidationError(this.formatMongooseErrors(error));
       }
-      throw error;
+    } catch (emailErr) {
+      console.error("Event update email failed:", emailErr);
     }
   }
   
@@ -254,6 +262,17 @@ class EventService {
     }
   }
 
+    return updatedEvent;
+
+     } catch (error) {
+    {
+          if (error.name === 'ValidationError') {
+            throw new ValidationError(this.formatMongooseErrors(error));
+          }
+          throw error;
+        }
+      }
+    }
   /**
    * Delete event
    * @param {String} eventId - Event ID

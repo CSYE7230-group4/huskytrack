@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthPageLayout from "../layouts/AuthPageLayout";
 import Input from "../components/ui/Input";
@@ -15,11 +15,12 @@ export default function Login() {
   const { login, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
-  if (!isLoading && isAuthenticated) {
-    navigate("/dashboard", { replace: true });
-    return null;
-  }
+  // Redirect if already authenticated (use useEffect to avoid setState during render)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,6 +39,15 @@ export default function Login() {
 
   // Show loading spinner while checking initial auth state
   if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // Don't show login form if already authenticated (redirect will happen via useEffect)
+  if (isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner />
@@ -80,11 +90,19 @@ export default function Login() {
             <label htmlFor="remember">Remember me</label>
           </div>
 
-          <Link
-            to="/auth/forgot-password"
-            className="text-primary hover:underline font-medium"
+          <Button
+            type="submit"
+            className="w-full mt-4"
+            isLoading={isLoading}
           >
-            Forgot Password?
+            Log in
+          </Button>
+        </form>
+
+        <p className="mt-6 text-xs text-center text-gray-500">
+          New user?{" "}
+          <Link to="/auth/register" className="text-primary font-medium hover:underline">
+            Sign up
           </Link>
         </div>
 

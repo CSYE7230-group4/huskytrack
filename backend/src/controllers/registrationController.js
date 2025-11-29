@@ -6,6 +6,11 @@
 const registrationService = require('../services/registrationService');
 const { RegistrationStatus } = require('../models/EventRegistration');
 
+// ✅ ADD THIS IMPORT (Required for Step 8.2)
+const {
+  sendRegistrationConfirmationEmail
+} = require('../services/notificationService');
+
 /**
  * Async handler wrapper to catch errors
  */
@@ -21,8 +26,31 @@ const register = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const eventId = req.params.id;
 
+  // Perform registration
   const result = await registrationService.registerForEvent(userId, eventId);
 
+  // Extract event + user data for email
+  const event =
+    result.event ||
+    result.eventData ||
+    result.registration?.event;
+
+  const user = req.user;
+
+  // 🔵 Send confirmation email ONLY if user is fully registered (not waitlisted)
+  if (result.status === 'REGISTERED' && event) {
+    await sendRegistrationConfirmationEmail({
+      to: user.email,
+      userName: user.firstName || user.name || "User",
+      eventName: event.title,
+      eventDate: new Date(event.startDate).toLocaleString(),
+      eventLocation: event.location?.name || "Campus",
+      eventUrl: `https://huskytrack.app/events/${event._id}`,
+      unsubscribeUrl: "https://huskytrack.app/unsubscribe/preview"
+    });
+  }
+
+  // Return response
   res.status(result.status === 'REGISTERED' ? 201 : 200).json({
     success: true,
     message: result.message,
@@ -125,8 +153,8 @@ const markAttendance = asyncHandler(async (req, res) => {
   const { attended } = req.body;
 
   const result = await registrationService.markAttendance(
-    registrationId, 
-    userId, 
+    registrationId,
+    userId,
     attended !== undefined ? attended : true
   );
 
@@ -202,4 +230,3 @@ module.exports = {
   checkEligibility,
   getRegistrationStats
 };
-

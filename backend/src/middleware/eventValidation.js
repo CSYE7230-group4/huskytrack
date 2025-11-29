@@ -115,7 +115,7 @@ const getEventsQuerySchema = z.object({
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     isPublic: z.string().transform((val) => val === 'true').optional(),
-    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title']).optional()
+    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'popularity', '-popularity', 'currentRegistrations', '-currentRegistrations', 'relevance']).optional()
   })
 });
 
@@ -128,7 +128,7 @@ const searchEventsSchema = z.object({
     category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
-    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'popularity', '-popularity', 'relevance']).optional()
+    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'popularity', '-popularity', 'currentRegistrations', '-currentRegistrations', 'relevance']).optional()
   })
 });
 

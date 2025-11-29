@@ -2,7 +2,7 @@
  * API Service Layer
  * Centralized Axios instance with interceptors for authentication and error handling
  */
-
+import { Event } from '../types';
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
   getAccessToken,
@@ -218,6 +218,22 @@ export const retryRequest = async <T>(
     throw error;
   }
 };
+/**
+ * Event API Services
+ */
+
+
+export const getEvents = async (params?: any): Promise<Event[]> => {
+  const response = await api.get('/events', { params });
+  return response.data.data || response.data;
+};
+
+export const getEventById = async (id: string): Promise<Event> => {
+
+  const response = await api.get(`/events/${id}`);
+  
+
+  return response.data.data || response.data; 
+};
 
 export default api;
-

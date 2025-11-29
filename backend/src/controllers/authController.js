@@ -5,8 +5,15 @@
 
 const User = require('../models/User');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
-const { sendPasswordResetEmail, sendWelcomeEmail, sendPasswordChangedEmail } = require('../utils/email');
+
+const {
+    sendWelcomeEmail,
+    sendPasswordResetEmail,
+    sendPasswordChangedEmail
+} = require('../services/notificationService');
+
 const crypto = require('crypto');
+
 
 /**
  * Register a new user
