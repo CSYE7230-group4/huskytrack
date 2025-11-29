@@ -157,7 +157,16 @@ const OrganizerDashboard: React.FC = () => {
       setProcessingEventId(id);
       await deleteEvent(id);
 
+      // Remove from events list
       setEvents((prev) => prev.filter((e) => e.id !== id));
+
+      // Refresh dashboard stats
+      try {
+        const data = await getOrganizerDashboardData();
+        setDashboardData(data);
+      } catch (error) {
+        // Silently fail - stats will refresh on next page load
+      }
 
       showToast("Event deleted", "success");
     } catch (err) {
@@ -256,7 +265,7 @@ const OrganizerDashboard: React.FC = () => {
               // Loading skeleton
               Array.from({ length: 3 }).map((_, i) => (
                 <div
-                  key={i}
+                  key={`org-events-skeleton-${i}`}
                   className="bg-white rounded-xl border border-gray-200 p-4"
                 >
                   <Skeleton className="h-4 w-40 mb-2" />

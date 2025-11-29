@@ -186,10 +186,32 @@ class EventService {
     }
 
     // Validate dates if being updated
+    // Only validate start date in future if it's being changed
     if (updateData.startDate || updateData.endDate) {
       const newStartDate = updateData.startDate || event.startDate;
       const newEndDate = updateData.endDate || event.endDate;
-      this.validateEventDates(newStartDate, newEndDate);
+      
+      // Validate end is after start
+      const start = new Date(newStartDate);
+      const end = new Date(newEndDate);
+      
+      if (end <= start) {
+        throw new ValidationError('Event end date must be after start date');
+      }
+      
+      // Validate minimum duration (30 minutes) - works correctly for multi-day events
+      const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+      if (end - start < minDuration) {
+        throw new ValidationError('Event must be at least 30 minutes long');
+      }
+      
+      // Only validate start date is in future if it's being changed
+      if (updateData.startDate) {
+        const now = new Date();
+        if (start <= now) {
+          throw new ValidationError('Event start date must be in the future');
+        }
+      }
     }
 
     // If publishing, validate requirements

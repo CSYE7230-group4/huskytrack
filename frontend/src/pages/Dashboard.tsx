@@ -21,22 +21,22 @@ export default function Dashboard() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
             {user?.firstName ? `Welcome back, ${user.firstName}!` : "Welcome back 👋"}
-          </h1>
+      </h1>
           <p className="text-xs text-gray-500 mt-1">
             Here&apos;s what&apos;s happening with your events today.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
+      <Button
             size="sm"
             variant="outline"
             onClick={() => refresh()}
             disabled={isRefreshing || loading}
           >
             {isRefreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+      </Button>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export default function Dashboard() {
           <span>{error}</span>
           <Button size="sm" variant="outline" onClick={() => refresh()}>
             Retry
-          </Button>
+      </Button>
         </div>
       )}
 
@@ -65,7 +65,7 @@ export default function Dashboard() {
             loading={loading}
             error={null}
             onRefresh={refresh}
-          />
+      />
         </div>
 
         {/* Column 2 */}
@@ -106,7 +106,10 @@ export default function Dashboard() {
       {loading && !data && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, idx) => (
-            <div key={idx} className="bg-white rounded-xl shadow-soft border border-gray-100 p-4">
+            <div
+              key={`dashboard-skeleton-${idx}`}
+              className="bg-white rounded-xl shadow-soft border border-gray-100 p-4"
+            >
               <Skeleton className="h-4 w-1/3 mb-3" />
               <Skeleton className="h-3 w-full mb-1" />
               <Skeleton className="h-3 w-5/6 mb-1" />

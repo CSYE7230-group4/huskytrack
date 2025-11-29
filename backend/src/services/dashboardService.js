@@ -8,6 +8,7 @@ const eventRegistrationRepository = require('../repositories/eventRegistrationRe
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
 const { Bookmark } = require('../models/Bookmark');
 const { Notification, NotificationStatus } = require('../models/Notification');
+const { EventStatus } = require('../models/Event');
 const recommendationService = require('./recommendationService');
 
 class DashboardService {
@@ -51,23 +52,41 @@ class DashboardService {
     // 6. Calendar data (current and next month)
     const calendarPromise = this._getCalendarData(userId, now);
 
+    // 7. Upcoming events created by user (organizer view)
+    const myUpcomingEventsPromise = eventRepository.findAll(
+      {
+        organizer: userId,
+        status: EventStatus.PUBLISHED,
+        startDate: { $gt: now },
+      },
+      {
+        page: 1,
+        limit: 5,
+        sort: { startDate: 1 },
+        populate: true,
+        lean: true,
+      }
+    );
+
     const [
       upcomingRegs,
       bookmarks,
       stats,
       notifications,
       recommendations,
-      calendar
+      calendar,
+      myUpcomingEvents
     ] = await Promise.all([
       upcomingRegsPromise,
       bookmarksPromise,
       statsPromise,
       notificationsPromise,
       recommendationsPromise,
-      calendarPromise
+      calendarPromise,
+      myUpcomingEventsPromise
     ]);
 
-    const upcomingEvents = (upcomingRegs.registrations || [])
+    const upcomingEventsFromRegs = (upcomingRegs.registrations || [])
       .filter((reg) => reg.event && reg.event.startDate > now)
       .slice(0, 5)
       .map((reg) => ({
@@ -76,13 +95,30 @@ class DashboardService {
         registrationStatus: reg.status
       }));
 
+    const myUpcomingEventsList = (myUpcomingEvents.events || []).filter(
+      (ev) => ev && ev.startDate > now
+    );
+
+    // Merge and de‑duplicate by _id
+    const seen = new Set();
+    const mergedUpcoming = [];
+
+    for (const ev of [...upcomingEventsFromRegs, ...myUpcomingEventsList]) {
+      const id = ev._id?.toString();
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        mergedUpcoming.push(ev);
+      }
+      if (mergedUpcoming.length >= 5) break;
+    }
+
     const bookmarkedEvents = (bookmarks || [])
       .filter((b) => b.event)
       .slice(0, 5)
       .map((b) => b.event);
 
     return {
-      upcomingEvents,
+      upcomingEvents: mergedUpcoming,
       bookmarks: bookmarkedEvents,
       recommendations: recommendations || [],
       stats,

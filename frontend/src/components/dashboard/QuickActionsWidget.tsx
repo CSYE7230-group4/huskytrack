@@ -25,7 +25,7 @@ export default function QuickActionsWidget(_: QuickActionsWidgetProps) {
             size="sm"
             variant="outline"
             className="flex-1"
-            onClick={() => navigate("/app/events/create")}
+            onClick={() => navigate("/app/events/new")}
           >
             Create event
           </Button>

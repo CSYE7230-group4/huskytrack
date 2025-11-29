@@ -101,7 +101,35 @@ const updateEventSchema = z.object({
     imageUrl: z.string().url('Invalid image URL').nullable().optional(),
     tags: z.array(z.string().max(50)).max(20, 'Maximum 20 tags allowed').optional(),
     isPublic: z.boolean().optional()
-  })
+  }).refine(
+    (data) => {
+      // Only validate if both dates are provided
+      if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate);
+        const end = new Date(data.endDate);
+        return end > start;
+      }
+      return true;
+    },
+    {
+      message: 'End date must be after start date',
+      path: ['endDate']
+    }
+  ).refine(
+    (data) => {
+      // Only validate start date if it's being updated
+      if (data.startDate) {
+        const start = new Date(data.startDate);
+        const now = new Date();
+        return start > now;
+      }
+      return true;
+    },
+    {
+      message: 'Start date must be in the future',
+      path: ['startDate']
+    }
+  )
 });
 
 // Query parameters schema for listing events
