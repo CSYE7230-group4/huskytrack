@@ -24,3 +24,4 @@ router.post('/:eventId/interested', authenticate, markInterested);
 
 module.exports = router;
 
+
