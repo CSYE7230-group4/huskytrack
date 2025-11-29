@@ -9,7 +9,6 @@ const eventRepository = require('../repositories/eventRepository');
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
 const { Event, EventStatus } = require('../models/Event');
 const { Notification, NotificationType } = require('../models/Notification');
-const { sendRegistrationConfirmationEmail } = require('../services/notificationService');
 const mongoose = require('mongoose');
 
 const {

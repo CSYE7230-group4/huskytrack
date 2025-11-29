@@ -1,98 +1,120 @@
-import { useState } from "react";
-import SearchBar from "../components/ui/SearchBar";
-import CategoryFilter from "../components/ui/CategoryFilter";
-import EventCard from "../components/ui/EventCard";
-import { events } from "../data/events";
-
-import Modal from "../components/ui/Modal";
 import Button from "../components/ui/Button";
-
-import { useToast } from "../hooks/useToast";
-
+import Skeleton from "../components/ui/Skeleton";
+import { useDashboard } from "../hooks/useDashboard";
+import UpcomingEventsWidget from "../components/dashboard/UpcomingEventsWidget";
+import BookmarkedEventsWidget from "../components/dashboard/BookmarkedEventsWidget";
+import SuggestedEventsWidget from "../components/dashboard/SuggestedEventsWidget";
+import UserStatsWidget from "../components/dashboard/UserStatsWidget";
+import CalendarWidget from "../components/dashboard/CalendarWidget";
+import NotificationsPanel from "../components/dashboard/NotificationsPanel";
+import QuickActionsWidget from "../components/dashboard/QuickActionsWidget";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Dashboard() {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const { user } = useAuth();
+  const { data, isLoading, isRefreshing, error, refresh } = useDashboard();
 
-  const [showModal, setShowModal] = useState(false);
-
-  // ✅ ADD THIS EXACTLY HERE
-  const { showToast } = useToast();
-  // ----------------------------------
-
-  // FILTER LOGIC
-  const filtered = events.filter((event) => {
-    const matchesCategory =
-      category === "All" || event.type.toLowerCase() === category.toLowerCase();
-
-    const matchesSearch = event.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
-
-    return matchesCategory && matchesSearch;
-  });
+  const loading = isLoading && !data;
 
   return (
-    <div className="px-6 py-8 space-y-8">
-
-      {/* Header */}
-      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-        Welcome back 👋
-      </h1>
-
-      {/* Demo Toast Button */}
-      <Button
-        onClick={() =>
-          showToast("This is a toast notification!", "success")
-        }
-        className="mt-2"
-      >
-        Show Demo Toast
-      </Button>
-
-      {/* Demo Modal Button */}
-      <Button
-        onClick={() => setShowModal(true)}
-        className="mt-2"
-      >
-        Open Demo Modal
-      </Button>
-
-      {/* Search Input */}
-      <SearchBar
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      {/* Category Filter Tabs */}
-      <CategoryFilter active={category} onSelect={setCategory} />
-
-      {/* Events Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
+    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+            {user?.firstName ? `Welcome back, ${user.firstName}!` : "Welcome back 👋"}
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Here&apos;s what&apos;s happening with your events today.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => refresh()}
+            disabled={isRefreshing || loading}
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
-      {/* No Results UI */}
-      {filtered.length === 0 && (
-        <p className="text-sm text-gray-500 text-center pt-10">
-          No events found matching your filters.
-        </p>
+      {/* GLOBAL ERROR */}
+      {error && !loading && (
+        <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2 flex items-center justify-between gap-2">
+          <span>{error}</span>
+          <Button size="sm" variant="outline" onClick={() => refresh()}>
+            Retry
+          </Button>
+        </div>
       )}
 
-      {/* Modal */}
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title="Demo Modal"
-      >
-        <p className="text-gray-700">
-          This is your reusable modal component.  
-          You can now use it for event registration, confirmations, alerts, etc.
-        </p>
-      </Modal>
+      {/* GRID LAYOUT */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {/* Column 1 */}
+        <div className="space-y-4">
+          <UpcomingEventsWidget
+            events={data?.upcomingEvents || []}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+          <BookmarkedEventsWidget
+            events={data?.bookmarks || []}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+        </div>
 
+        {/* Column 2 */}
+        <div className="space-y-4">
+          <SuggestedEventsWidget
+            events={data?.recommendations || []}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+          <UserStatsWidget
+            stats={data?.stats || null}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+          <QuickActionsWidget />
+        </div>
+
+        {/* Column 3 */}
+        <div className="space-y-4">
+          <CalendarWidget
+            calendar={data?.calendar || null}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+          <NotificationsPanel
+            notifications={data?.notifications || []}
+            loading={loading}
+            error={null}
+            onRefresh={refresh}
+          />
+        </div>
+      </div>
+
+      {/* Top-level skeleton while everything loads first time */}
+      {loading && !data && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="bg-white rounded-xl shadow-soft border border-gray-100 p-4">
+              <Skeleton className="h-4 w-1/3 mb-3" />
+              <Skeleton className="h-3 w-full mb-1" />
+              <Skeleton className="h-3 w-5/6 mb-1" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
