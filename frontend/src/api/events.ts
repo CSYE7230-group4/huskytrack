@@ -305,19 +305,39 @@ function buildEventPayload(values: EventFormValues, status?: EventStatus) {
     throw new Error(`End date/time error: ${err.message}`);
   }
   
-  // Validate end is after start (allows multi-day events)
-  if (end <= start) {
-    const startStr = `${values.startDate} ${values.startTime}`;
-    const endStr = `${values.endDate} ${values.endTime}`;
-    throw new Error(`End date/time (${endStr}) must be after start date/time (${startStr})`);
-  }
+  // Check if start and end dates are the same (compare date strings, not times)
+  const isSameDate = values.startDate === values.endDate;
   
-  // Validate minimum duration (30 minutes) - this works correctly for multi-day events
-  const durationMs = end.getTime() - start.getTime();
-  const minDurationMs = 30 * 60 * 1000; // 30 minutes in milliseconds
-  if (durationMs < minDurationMs) {
-    const durationMinutes = Math.round(durationMs / (60 * 1000));
-    throw new Error(`Event must be at least 30 minutes long (current duration: ${durationMinutes} minutes)`);
+  // For multi-day events: only check that end date is after start date (ignore time)
+  // For same-day events: check both date and time, plus minimum duration
+  if (!isSameDate) {
+    // Multi-day event: just ensure end date string is after start date string
+    if (values.endDate < values.startDate) {
+      throw new Error(
+        `End date (${values.endDate}) must be after start date (${values.startDate})`
+      );
+    }
+    // If dates are different, times don't matter - validation passes
+  } else {
+    // Same-day event: validate time and duration
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    
+    if (endTime <= startTime) {
+      throw new Error(
+        `End time (${values.endTime}) must be after start time (${values.startTime}) for same-day events`
+      );
+    }
+    
+    // Validate minimum duration (30 minutes) for same-day events
+    const durationMs = endTime - startTime;
+    const minDurationMs = 30 * 60 * 1000; // 30 minutes in milliseconds
+    if (durationMs < minDurationMs) {
+      const durationMinutes = Math.round(durationMs / (60 * 1000));
+      throw new Error(
+        `Event must be at least 30 minutes long (current duration: ${durationMinutes} minutes)`
+      );
+    }
   }
 
   const mappedStatus =

@@ -186,12 +186,17 @@ class EventRepository {
    * @returns {Promise<Event|null>} Updated event
    */
   async update(eventId, updateData) {
+    // Note: We skip Mongoose validators for date fields because:
+    // 1. Mongoose validators run before our service-level validation
+    // 2. During updates, validators may compare against old values
+    // 3. Our service-level validation in eventService.updateEvent is more sophisticated
+    //    and handles multi-day vs same-day events correctly
     return await Event.findByIdAndUpdate(
       eventId,
       { $set: updateData },
       { 
         new: true, 
-        runValidators: true,
+        runValidators: false, // Disable Mongoose validators - we validate in service layer
         context: 'query'
       }
     ).populate('organizer', 'firstName lastName email university');

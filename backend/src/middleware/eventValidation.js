@@ -49,8 +49,20 @@ const createEventSchema = z.object({
       errorMap: () => ({ message: 'Invalid category' })
     }),
     status: z.enum([EventStatus.DRAFT, EventStatus.PUBLISHED]).optional(),
-    startDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
-    endDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)),
+    startDate: z.union([z.string(), z.date()]).transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid start date: ${val}`);
+      }
+      return date;
+    }),
+    endDate: z.union([z.string(), z.date()]).transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid end date: ${val}`);
+      }
+      return date;
+    }),
     location: locationSchema,
     maxRegistrations: z.number().int().min(1).nullable().optional(),
     imageUrl: z.string().url('Invalid image URL').optional(),
@@ -58,17 +70,40 @@ const createEventSchema = z.object({
     isPublic: z.boolean().optional()
   }).refine(
     (data) => {
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      return end > start;
+      // Dates are already transformed to Date objects
+      const start = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
+      const end = data.endDate instanceof Date ? data.endDate : new Date(data.endDate);
+      
+      // Extract date strings (YYYY-MM-DD) for comparison
+      const startDateOnly = start.toISOString().slice(0, 10); // YYYY-MM-DD
+      const endDateOnly = end.toISOString().slice(0, 10); // YYYY-MM-DD
+      const isSameDate = startDateOnly === endDateOnly;
+      
+      // For multi-day events: only check that end date is after start date (ignore time)
+      // For same-day events: check both date and time, plus minimum duration
+      if (!isSameDate) {
+        // Multi-day event: compare date strings
+        return endDateOnly > startDateOnly;
+      } else {
+        // Same-day event: validate time and duration
+        if (end <= start) {
+          return false;
+        }
+        
+        // Validate minimum duration (30 minutes) for same-day events
+        const durationMs = end.getTime() - start.getTime();
+        const minDurationMs = 30 * 60 * 1000; // 30 minutes
+        return durationMs >= minDurationMs;
+      }
     },
     {
-      message: 'End date must be after start date',
+      message: 'End date must be after start date. For same-day events, duration must be at least 30 minutes',
       path: ['endDate']
     }
   ).refine(
     (data) => {
-      const start = new Date(data.startDate);
+      // Dates are already transformed to Date objects
+      const start = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
       const now = new Date();
       return start > now;
     },
@@ -94,8 +129,20 @@ const updateEventSchema = z.object({
       .optional(),
     category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional(),
     status: z.nativeEnum(EventStatus).optional(),
-    startDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)).optional(),
-    endDate: z.union([z.string(), z.date()]).transform((val) => new Date(val)).optional(),
+    startDate: z.union([z.string(), z.date()]).transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid start date: ${val}`);
+      }
+      return date;
+    }).optional(),
+    endDate: z.union([z.string(), z.date()]).transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid end date: ${val}`);
+      }
+      return date;
+    }).optional(),
     location: locationSchema.optional(),
     maxRegistrations: z.number().int().min(1).nullable().optional(),
     imageUrl: z.string().url('Invalid image URL').nullable().optional(),
@@ -105,21 +152,44 @@ const updateEventSchema = z.object({
     (data) => {
       // Only validate if both dates are provided
       if (data.startDate && data.endDate) {
-        const start = new Date(data.startDate);
-        const end = new Date(data.endDate);
-        return end > start;
+        // Dates are already transformed to Date objects
+        const start = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
+        const end = data.endDate instanceof Date ? data.endDate : new Date(data.endDate);
+        
+        // Extract date strings (YYYY-MM-DD) for comparison
+        const startDateOnly = start.toISOString().slice(0, 10); // YYYY-MM-DD
+        const endDateOnly = end.toISOString().slice(0, 10); // YYYY-MM-DD
+        const isSameDate = startDateOnly === endDateOnly;
+        
+        // For multi-day events: only check that end date is after start date (ignore time)
+        // For same-day events: check both date and time, plus minimum duration
+        if (!isSameDate) {
+          // Multi-day event: compare date strings
+          return endDateOnly > startDateOnly;
+        } else {
+          // Same-day event: validate time and duration
+          if (end <= start) {
+            return false;
+          }
+          
+          // Validate minimum duration (30 minutes) for same-day events
+          const durationMs = end.getTime() - start.getTime();
+          const minDurationMs = 30 * 60 * 1000; // 30 minutes
+          return durationMs >= minDurationMs;
+        }
       }
       return true;
     },
     {
-      message: 'End date must be after start date',
+      message: 'End date must be after start date. For same-day events, duration must be at least 30 minutes',
       path: ['endDate']
     }
   ).refine(
     (data) => {
       // Only validate start date if it's being updated
       if (data.startDate) {
-        const start = new Date(data.startDate);
+        // Dates are already transformed to Date objects
+        const start = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
         const now = new Date();
         return start > now;
       }

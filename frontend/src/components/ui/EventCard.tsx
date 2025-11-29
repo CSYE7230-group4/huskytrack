@@ -195,9 +195,9 @@ export default function EventCard({
           {/* Tags (short) */}
           {event.tags && event.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 ml-auto justify-end">
-              {event.tags.slice(0, variant === "grid" ? 2 : 4).map((tag) => (
+              {event.tags.slice(0, variant === "grid" ? 2 : 4).map((tag, idx) => (
                 <span
-                  key={tag}
+                  key={`${tag}-${idx}`}
                   className="rounded-full bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
                 >
                   #{tag}

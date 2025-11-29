@@ -191,18 +191,47 @@ class EventService {
       const newStartDate = updateData.startDate || event.startDate;
       const newEndDate = updateData.endDate || event.endDate;
       
-      // Validate end is after start
       const start = new Date(newStartDate);
       const end = new Date(newEndDate);
       
-      if (end <= start) {
-        throw new ValidationError('Event end date must be after start date');
+      // Validate dates are valid
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new ValidationError('Invalid start or end date');
       }
       
-      // Validate minimum duration (30 minutes) - works correctly for multi-day events
-      const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
-      if (end - start < minDuration) {
-        throw new ValidationError('Event must be at least 30 minutes long');
+      // Extract date strings (YYYY-MM-DD) using local date components to avoid timezone issues
+      // This ensures we compare the actual calendar dates, not UTC dates
+      const startYear = start.getFullYear();
+      const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+      const startDay = String(start.getDate()).padStart(2, '0');
+      const startDateOnly = `${startYear}-${startMonth}-${startDay}`;
+      
+      const endYear = end.getFullYear();
+      const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+      const endDay = String(end.getDate()).padStart(2, '0');
+      const endDateOnly = `${endYear}-${endMonth}-${endDay}`;
+      
+      const isSameDate = startDateOnly === endDateOnly;
+      
+      // For multi-day events: only check that end date is after start date (ignore time)
+      // For same-day events: check both date and time, plus minimum duration
+      if (!isSameDate) {
+        // Multi-day event: compare date strings
+        if (endDateOnly <= startDateOnly) {
+          throw new ValidationError(`End date (${endDateOnly}) must be after start date (${startDateOnly})`);
+        }
+        // For multi-day events, times don't matter - validation passes
+      } else {
+        // Same-day event: validate time and duration
+        if (end <= start) {
+          throw new ValidationError('End time must be after start time for same-day events');
+        }
+        
+        // Validate minimum duration (30 minutes) for same-day events
+        const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+        if (end - start < minDuration) {
+          throw new ValidationError('Event must be at least 30 minutes long');
+        }
       }
       
       // Only validate start date is in future if it's being changed
@@ -552,14 +581,39 @@ class EventService {
       throw new ValidationError('Event start date must be in the future');
     }
 
-    if (end <= start) {
-      throw new ValidationError('Event end date must be after start date');
-    }
-
-    // Events should be at least 30 minutes long
-    const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
-    if (end - start < minDuration) {
-      throw new ValidationError('Event must be at least 30 minutes long');
+    // Extract date strings (YYYY-MM-DD) using local date components to avoid timezone issues
+    // This ensures we compare the actual calendar dates, not UTC dates
+    const startYear = start.getFullYear();
+    const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+    const startDay = String(start.getDate()).padStart(2, '0');
+    const startDateOnly = `${startYear}-${startMonth}-${startDay}`;
+    
+    const endYear = end.getFullYear();
+    const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+    const endDay = String(end.getDate()).padStart(2, '0');
+    const endDateOnly = `${endYear}-${endMonth}-${endDay}`;
+    
+    const isSameDate = startDateOnly === endDateOnly;
+    
+    // For multi-day events: only check that end date is after start date (ignore time)
+    // For same-day events: check both date and time, plus minimum duration
+    if (!isSameDate) {
+      // Multi-day event: compare date strings
+      if (endDateOnly <= startDateOnly) {
+        throw new ValidationError(`End date (${endDateOnly}) must be after start date (${startDateOnly})`);
+      }
+      // For multi-day events, times don't matter - validation passes
+    } else {
+      // Same-day event: validate time and duration
+      if (end <= start) {
+        throw new ValidationError('End time must be after start time for same-day events');
+      }
+      
+      // Validate minimum duration (30 minutes) for same-day events
+      const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+      if (end - start < minDuration) {
+        throw new ValidationError('Event must be at least 30 minutes long');
+      }
     }
   }
 

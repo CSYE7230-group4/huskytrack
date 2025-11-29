@@ -157,6 +157,7 @@ class DashboardService {
   /**
    * Get calendar data for current and next month
    * Returns map of date (YYYY-MM-DD) -> count
+   * Includes both events user is registered for AND events user created (if organizer)
    * @param {String} userId
    * @param {Date} now
    * @returns {Promise<Object>}
@@ -166,7 +167,7 @@ class DashboardService {
     const startOfNextNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
 
     // Fetch all upcoming events user is registered for within range
-    const { registrations } = await eventRegistrationRepository.findByUser(userId, {
+    const registrationsPromise = eventRegistrationRepository.findByUser(userId, {
       page: 1,
       limit: 200,
       sort: { 'event.startDate': 1 },
@@ -174,7 +175,32 @@ class DashboardService {
       lean: true
     });
 
-    const eventsInRange = (registrations || [])
+    // Also fetch events created by user (organizer events)
+    const myEventsPromise = eventRepository.findAll(
+      {
+        organizer: userId,
+        status: EventStatus.PUBLISHED,
+        startDate: {
+          $gte: startOfMonth,
+          $lt: startOfNextNextMonth
+        }
+      },
+      {
+        page: 1,
+        limit: 200,
+        sort: { startDate: 1 },
+        populate: true,
+        lean: true
+      }
+    );
+
+    const [{ registrations }, myEventsResult] = await Promise.all([
+      registrationsPromise,
+      myEventsPromise
+    ]);
+
+    // Get events from registrations
+    const eventsFromRegs = (registrations || [])
       .filter(
         (reg) =>
           reg.event &&
@@ -184,10 +210,37 @@ class DashboardService {
       )
       .map((reg) => reg.event);
 
+    // Get events created by user
+    const myEvents = (myEventsResult.events || [])
+      .filter(
+        (ev) =>
+          ev &&
+          ev.startDate &&
+          ev.startDate >= startOfMonth &&
+          ev.startDate < startOfNextNextMonth
+      );
+
+    // Merge and de-duplicate by _id
+    const seen = new Set();
+    const allEvents = [];
+
+    for (const ev of [...eventsFromRegs, ...myEvents]) {
+      const id = ev._id?.toString();
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        allEvents.push(ev);
+      }
+    }
+
     const byDate = {};
-    eventsInRange.forEach((ev) => {
+    allEvents.forEach((ev) => {
       const d = new Date(ev.startDate);
-      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      // Extract date in local timezone to match frontend calendar display
+      // This ensures dates are highlighted correctly regardless of timezone
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const key = `${year}-${month}-${day}`; // YYYY-MM-DD in local timezone
       byDate[key] = (byDate[key] || 0) + 1;
     });
 

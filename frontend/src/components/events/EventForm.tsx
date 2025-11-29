@@ -216,14 +216,18 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
           newErrors.startEnd = "Invalid date or time format.";
-        } else if (end <= start) {
+        } else if (end.getTime() <= start.getTime()) {
           newErrors.startEnd = "End must be after start.";
         } else {
-          // Check minimum duration (30 minutes)
-          const durationMs = end.getTime() - start.getTime();
-          const minDurationMs = 30 * 60 * 1000;
-          if (durationMs < minDurationMs) {
-            newErrors.startEnd = "Event must be at least 30 minutes long.";
+          // Only check minimum duration (30 minutes) if event is on the same date
+          // For multi-day events, we only require that end date is after start date
+          const isSameDate = values.startDate === values.endDate;
+          if (isSameDate) {
+            const durationMs = end.getTime() - start.getTime();
+            const minDurationMs = 30 * 60 * 1000;
+            if (durationMs < minDurationMs) {
+              newErrors.startEnd = "Event must be at least 30 minutes long.";
+            }
           }
         }
       } catch (err) {
