@@ -7,6 +7,7 @@ const { EventStatus } = require('../models/Event');
 const eventRepository = require('../repositories/eventRepository');
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
 const { Bookmark } = require('../models/Bookmark');
+const { RecommendationFeedback } = require('../models/RecommendationFeedback');
 const eventRegistrationRepository = require('../repositories/eventRegistrationRepository');
 
 class RecommendationService {
@@ -79,14 +80,20 @@ class RecommendationService {
       return fallback.events || [];
     }
 
-    // 4. Exclude events user is already registered for
+    // 4. Get dismissed event IDs
+    const dismissedEventIds = await RecommendationFeedback.getDismissedEventIds(userId);
+    const dismissedSet = new Set(dismissedEventIds);
+
+    // 5. Exclude events user is already registered for AND dismissed events
     const filtered = [];
     for (const ev of events) {
       const hasRegistration = await eventRegistrationRepository.hasActiveRegistration(
         userId,
         ev._id
       );
-      if (!hasRegistration) {
+      const isDismissed = dismissedSet.has(ev._id.toString());
+      
+      if (!hasRegistration && !isDismissed) {
         filtered.push(ev);
       }
       if (filtered.length >= limit) break;

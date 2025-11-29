@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardWidget from "./DashboardWidget";
 import { EventDto } from "../ui/EventCard";
+import { dismissRecommendation, markRecommendationInterested } from "../../services/dashboardApi";
+import { useToast } from "../../hooks/useToast";
 
 interface SuggestedEventsWidgetProps {
   events: EventDto[];
@@ -17,20 +19,51 @@ export default function SuggestedEventsWidget({
   onRefresh,
 }: SuggestedEventsWidgetProps) {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   const visible = (events || []).filter((e) => e._id && !dismissedIds.has(e._id));
 
-  const handleDismiss = (id?: string) => {
-    if (!id) return;
-    setDismissedIds((prev) => new Set(prev).add(id));
+  const handleDismiss = async (id?: string) => {
+    if (!id || processingIds.has(id)) return;
+    
+    try {
+      setProcessingIds((prev) => new Set(prev).add(id));
+      await dismissRecommendation(id);
+      setDismissedIds((prev) => new Set(prev).add(id));
+      showToast("Recommendation dismissed", "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to dismiss recommendation", "error");
+    } finally {
+      setProcessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
-  const handleInterested = (id?: string) => {
-    if (!id) return;
-    // For now just optimistic: keep it and maybe in future send feedback to backend
-    // eslint-disable-next-line no-console
-    console.log("User interested in recommendation", id);
+  const handleInterested = async (id?: string) => {
+    if (!id || processingIds.has(id)) return;
+    
+    try {
+      setProcessingIds((prev) => new Set(prev).add(id));
+      await markRecommendationInterested(id);
+      showToast("Event bookmarked! We'll show you similar events.", "success");
+      // Optionally refresh to get updated recommendations
+      if (onRefresh) {
+        setTimeout(() => onRefresh(), 500);
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to mark as interested", "error");
+    } finally {
+      setProcessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   const hasEvents = visible.length > 0;
@@ -66,17 +99,19 @@ export default function SuggestedEventsWidget({
               <div className="flex items-center justify-end gap-2 mt-1.5">
                 <button
                   type="button"
-                  className="text-[11px] text-gray-400 hover:text-gray-600"
+                  className="text-[11px] text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handleDismiss(event._id)}
+                  disabled={processingIds.has(event._id || '')}
                 >
-                  Dismiss
+                  {processingIds.has(event._id || '') ? 'Dismissing...' : 'Dismiss'}
                 </button>
                 <button
                   type="button"
-                  className="text-[11px] text-primary hover:underline"
+                  className="text-[11px] text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handleInterested(event._id)}
+                  disabled={processingIds.has(event._id || '')}
                 >
-                  Interested
+                  {processingIds.has(event._id || '') ? 'Processing...' : 'Interested'}
                 </button>
               </div>
             </li>

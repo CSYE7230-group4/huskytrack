@@ -58,4 +58,28 @@ export async function getDashboardFeed(): Promise<DashboardFeedResponse> {
   return res.data.data;
 }
 
+/**
+ * Dismiss a recommendation
+ * @param eventId - Event ID to dismiss
+ */
+export async function dismissRecommendation(eventId: string): Promise<void> {
+  const res = await api.post<ApiResponse<{ message: string }>>(`/recommendations/${eventId}/dismiss`);
+  
+  if (!res.data.success) {
+    throw new Error(res.data.message || "Failed to dismiss recommendation");
+  }
+}
+
+/**
+ * Mark a recommendation as interested (also bookmarks the event)
+ * @param eventId - Event ID to mark as interested
+ */
+export async function markRecommendationInterested(eventId: string): Promise<void> {
+  const res = await api.post<ApiResponse<{ message: string }>>(`/recommendations/${eventId}/interested`);
+  
+  if (!res.data.success) {
+    throw new Error(res.data.message || "Failed to mark as interested");
+  }
+}
+
 
