@@ -9,7 +9,6 @@ const eventRepository = require('../repositories/eventRepository');
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
 const { Event, EventStatus } = require('../models/Event');
 const { Notification, NotificationType } = require('../models/Notification');
-const { sendRegistrationConfirmationEmail } = require('../services/notificationService');
 const mongoose = require('mongoose');
 
 const {
@@ -99,25 +98,6 @@ class RegistrationService {
         // Trigger notification (don't block on failure)
         this.sendRegistrationConfirmationNotification(userId, eventId, registration._id)
           .catch(err => console.error('Notification error:', err));
-
-        // Send email confirmation (do not block if fails)
-        try {
-          const fullRegistration = await eventRegistrationRepository.findById(registration._id, {
-            populate: ['event', 'user']
-          });
-
-          await sendRegistrationConfirmationEmail({
-            to: fullRegistration.user.email,
-            userName: fullRegistration.user.firstName,
-            eventName: fullRegistration.event.title,
-            eventDate: fullRegistration.event.startDate,
-            eventLocation: fullRegistration.event.location,
-            organizerName: fullRegistration.event.organizer?.firstName || 'Organizer',
-            eventId: fullRegistration.event._id
-          });
-        } catch (err) {
-          console.error('Failed to send registration email:', err);
-        }
 
         // Send EMAIL: Registration Confirmation
         try {
