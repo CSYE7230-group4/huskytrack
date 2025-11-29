@@ -90,11 +90,19 @@ export default function Login() {
             <label htmlFor="remember">Remember me</label>
           </div>
 
-          <Link
-            to="/auth/forgot-password"
-            className="text-primary hover:underline font-medium"
+          <Button
+            type="submit"
+            className="w-full mt-4"
+            isLoading={isLoading}
           >
-            Forgot Password?
+            Log in
+          </Button>
+        </form>
+
+        <p className="mt-6 text-xs text-center text-gray-500">
+          New user?{" "}
+          <Link to="/auth/register" className="text-primary font-medium hover:underline">
+            Sign up
           </Link>
         </div>
 
