@@ -26,6 +26,16 @@ class BadRequestError extends ApiError {
 }
 
 /**
+ * 400 Validation Error
+ * Alias for BadRequestError with validation-specific message
+ */
+class ValidationError extends BadRequestError {
+    constructor(message = 'Validation failed', errors = null) {
+        super(message, errors);
+    }
+}
+
+/**
  * 401 Unauthorized
  */
 class UnauthorizedError extends ApiError {
@@ -77,6 +87,46 @@ class TooManyRequestsError extends ApiError {
 class InternalServerError extends ApiError {
     constructor(message = 'Internal server error') {
         super(500, message);
+    }
+}
+
+/**
+ * Registration-specific errors
+ */
+
+/**
+ * Registration Already Exists Error (409 Conflict)
+ */
+class RegistrationExistsError extends ConflictError {
+    constructor(message = 'You are already registered for this event') {
+        super(message);
+    }
+}
+
+/**
+ * Event Capacity Exceeded Error (409 Conflict)
+ */
+class CapacityExceededError extends ConflictError {
+    constructor(message = 'Event is at full capacity') {
+        super(message);
+    }
+}
+
+/**
+ * Registration Not Found Error (404 Not Found)
+ */
+class RegistrationNotFoundError extends NotFoundError {
+    constructor(message = 'Registration not found') {
+        super(message);
+    }
+}
+
+/**
+ * Event Registration Closed Error (400 Bad Request)
+ */
+class RegistrationClosedError extends BadRequestError {
+    constructor(message = 'Registration for this event is closed') {
+        super(message);
     }
 }
 
@@ -217,12 +267,17 @@ const errorHandler = (err, req, res, next) => {
 module.exports = {
     ApiError,
     BadRequestError,
+    ValidationError,
     UnauthorizedError,
     ForbiddenError,
     NotFoundError,
     ConflictError,
     TooManyRequestsError,
     InternalServerError,
+    RegistrationExistsError,
+    CapacityExceededError,
+    RegistrationNotFoundError,
+    RegistrationClosedError,
     sendSuccess,
     sendError,
     asyncHandler,

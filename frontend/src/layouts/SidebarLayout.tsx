@@ -1,54 +1,85 @@
-import { Outlet, NavLink } from "react-router-dom";
+// src/layouts/SidebarLayout.tsx
+import { NavLink } from "react-router-dom";
+import { Menu, Home, Calendar, User, ClipboardList } from "lucide-react";
 
 export default function SidebarLayout() {
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-soft px-6 py-8 hidden md:block">
-        <h2 className="text-2xl font-bold text-primary mb-8">HuskyTrack</h2>
+    <aside className="hidden md:flex flex-col w-60 min-h-screen bg-white border-r border-gray-200 p-6">
 
-        <nav className="flex flex-col gap-4 text-dark">
-          <NavLink
-            to="/dashboard"
-            className="hover:text-primary transition-colors"
-          >
-            Dashboard
-          </NavLink>
-
-          <NavLink
-            to="/events"
-            className="hover:text-primary transition-colors"
-          >
-            Events
-          </NavLink>
-
-          <NavLink
-            to="/profile"
-            className="hover:text-primary transition-colors"
-          >
-            Profile
-          </NavLink>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Navbar */}
-        <header className="bg-white shadow-soft py-4 px-6 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">HuskyTrack</h1>
-
-          <div className="flex items-center gap-4">
-            <div className="w-9 h-9 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold">
-              A
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="p-6">
-          <Outlet />
-        </main>
+      {/* Top Section */}
+      <div className="flex items-center gap-2 mb-10">
+        <Menu className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold text-gray-800">Navigation</h2>
       </div>
-    </div>
+
+      {/* Nav Links */}
+      <nav className="flex flex-col gap-3 text-gray-700 text-sm font-medium">
+
+        {/* Dashboard */}
+        <NavLink
+          to="/app"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <Home className="w-4 h-4" />
+          Dashboard
+        </NavLink>
+
+        {/* Events */}
+        <NavLink
+          to="/app/events"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <Calendar className="w-4 h-4" />
+          Events
+        </NavLink>
+
+        {/* Organizer Dashboard — NEW */}
+        <NavLink
+          to="/app/organizer"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <ClipboardList className="w-4 h-4" />
+          Organizer
+        </NavLink>
+
+        {/* Profile */}
+        <NavLink
+          to="/app/profile"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          <User className="w-4 h-4" />
+          Profile
+        </NavLink>
+
+        {/* UI Guide */}
+        <NavLink
+          to="/app/ui-guide"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+            }`
+          }
+        >
+          UI Guide
+        </NavLink>
+
+      </nav>
+    </aside>
   );
 }

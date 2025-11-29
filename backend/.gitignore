@@ -37,3 +37,6 @@ build/
 *.tmp
 .cache/
 
+# Uploads
+uploads/
+

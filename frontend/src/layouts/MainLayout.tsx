@@ -1,61 +1,97 @@
 // src/layouts/MainLayout.tsx
-import { NavLink, Outlet } from "react-router-dom";
-import HuskyLogo from "../assets/husky-logo.png";
+
+import { Outlet, useNavigate, NavLink } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import SidebarLayout from "./SidebarLayout";
+import Footer from "../components/common/Footer";
+import Button from "../components/ui/Button";
 
 export default function MainLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      navigate("/auth/login");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <header className="bg-white/90 backdrop-blur shadow-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
-          {/* Brand */}
-          <div className="flex items-center gap-2">
-            <img src={HuskyLogo} alt="Husky logo" className="h-7 w-auto" />
-            <span className="text-lg font-semibold text-primary tracking-tight">
-              HuskyTrack
-            </span>
+    <div className="min-h-screen flex bg-background">
+
+      {/* Sidebar */}
+      <SidebarLayout />
+
+      {/* Right Section */}
+      <div className="flex-1 flex flex-col">
+
+        {/* Top Navbar */}
+        <header className="bg-white/90 backdrop-blur shadow-sm">
+          <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <img
+                src="src/assets/NewLogoHuskyTrack.svg"
+                alt="Husky logo"
+                className="h-10 w-auto"
+              />
+              <span className="text-xl font-semibold text-primary tracking-tight">
+                HuskyTrack
+              </span>
+            </div>
+
+            {/* User Section */}
+            {user && (
+              <div className="flex items-center gap-4">
+
+                {/* Optional: Organizer Shortcut */}
+                <NavLink
+                  to="/app/organizer"
+                  className={({ isActive }) =>
+                    `text-sm px-3 py-2 rounded-lg transition ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`
+                  }
+                >
+                  Organizer
+                </NavLink>
+
+                {/* User Info */}
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+
+                {/* Logout */}
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  Logout
+                </Button>
+              </div>
+            )}
+
           </div>
+        </header>
 
-          {/* Nav links */}
-          <nav className="flex items-center gap-6 text-sm font-medium">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/events"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Events
-            </NavLink>
-            <NavLink
-              to="/profile"
-              className={({ isActive }) =>
-                `hover:text-primary transition ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`
-              }
-            >
-              Profile
-            </NavLink>
-          </nav>
-        </div>
-      </header>
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto px-6 py-8">
+          <Outlet />
+        </main>
 
-      {/* Page content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <Outlet />
-      </main>
+        <Footer />
+      </div>
     </div>
   );
 }

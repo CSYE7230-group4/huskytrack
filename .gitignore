@@ -140,4 +140,12 @@ vite.config.ts.timestamp-*
 
 # Custom ignore files
 tasks/*
-*.md
+design/diagrams/markdowns/*
+backend/*.md
+backend/DOCUMENTATION/*
+backend/GUIDES-MARKDOWN/*
+backend/TASK-COMPLETION-MARKDOWN/*
+
+# TypeDoc generated documentation
+frontend/docs/
+frontend/docs-md/
