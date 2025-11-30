@@ -5,10 +5,36 @@ import { useAuth } from "../contexts/AuthContext";
 import SidebarLayout from "./SidebarLayout";
 import Footer from "../components/common/Footer";
 import Button from "../components/ui/Button";
+import NotificationBell from "../components/notifications/NotificationBell";
+import NotificationCenter from "../components/notifications/NotificationCenter";
+import { useNotifications } from "../hooks/useNotifications";
+import { useRef } from "react";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  // Initialize notifications hook
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    isFetching,
+    isLoadingMore,
+    error,
+    isOpen,
+    pagination,
+    markAsRead,
+    markAllAsRead,
+    loadMoreNotifications,
+    toggleNotificationCenter,
+    closeNotificationCenter,
+    refreshNotifications,
+  } = useNotifications({
+    autoFetch: !!user, // Only fetch if user is authenticated
+    pollingEnabled: !!user, // Only poll if user is authenticated
+  });
 
   const handleLogout = async () => {
     try {
@@ -48,7 +74,6 @@ export default function MainLayout() {
             {/* User Section */}
             {user && (
               <div className="flex items-center gap-4">
-
                 {/* Optional: Organizer Shortcut */}
                 <NavLink
                   to="/app/organizer"
@@ -62,6 +87,31 @@ export default function MainLayout() {
                 >
                   Organizer
                 </NavLink>
+
+                {/* Notification Bell with Center */}
+                <div ref={bellRef} className="relative inline-block">
+                  <NotificationBell
+                    unreadCount={unreadCount}
+                    onClick={toggleNotificationCenter}
+                  />
+                  {isOpen && (
+                    <NotificationCenter
+                      isOpen={isOpen}
+                      onClose={closeNotificationCenter}
+                      notifications={notifications}
+                      unreadCount={unreadCount}
+                      isLoading={isLoading}
+                      isFetching={isFetching}
+                      isLoadingMore={isLoadingMore}
+                      error={error}
+                      pagination={pagination}
+                      onMarkAsRead={markAsRead}
+                      onMarkAllAsRead={markAllAsRead}
+                      onLoadMore={loadMoreNotifications}
+                      onRefresh={refreshNotifications}
+                    />
+                  )}
+                </div>
 
                 {/* User Info */}
                 <div className="text-right">

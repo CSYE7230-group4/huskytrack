@@ -6,6 +6,7 @@ router.use('/events', require('./event'));
 router.use('/recommendations', require('./recommendation'));
 router.use('/upload', require('./upload'));
 router.use('/dashboard', require('./dashboard'));
+router.use('/notifications', require('./notification'));
 router.use('/', require('./registration'));
 router.use('/', require('./comment'));
 
