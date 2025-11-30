@@ -70,6 +70,14 @@ router.get(
   eventController.canUserRegister
 );
 
+// Like routes (must be before /:id)
+const likeController = require('../controllers/likeController');
+router.post('/:id/like', authenticate, likeController.toggleLike);
+router.get('/:id/like/check', authenticate, likeController.checkLike);
+router.get('/:id/likes/status', authenticate, likeController.checkLike); // Alias for /check
+router.get('/:id/likes/count', likeController.getLikeCount);
+router.get('/:id/likes', likeController.getEventLikes);
+
 // Get all events with filters
 router.get('/', validateGetEvents, optionalAuth, eventController.getEvents);
 

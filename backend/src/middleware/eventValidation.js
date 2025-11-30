@@ -109,27 +109,69 @@ const getEventsQuerySchema = z.object({
   query: z.object({
     page: z.string().regex(/^\d+$/).transform(Number).optional(),
     limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-    category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional(),
-    status: z.nativeEnum(EventStatus).optional(),
-    search: z.string().optional(),
+    offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+    category: z.union([
+      z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
+    status: z.union([
+      z.nativeEnum(EventStatus),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
+    search: z.string().max(500, 'Search query cannot exceed 500 characters').optional(),
+    searchQuery: z.string().max(500, 'Search query cannot exceed 500 characters').optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
+    tags: z.union([
+      z.string(),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
+    location: z.string().optional(),
+    capacity: z.enum(['available', 'full']).optional(),
+    includePast: z.string().transform((val) => val === 'true').optional(),
     isPublic: z.string().transform((val) => val === 'true').optional(),
-    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'popularity', '-popularity', 'currentRegistrations', '-currentRegistrations', 'relevance']).optional()
+    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created', 'startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'currentRegistrations', '-currentRegistrations']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional()
   })
 });
 
-// Search query schema
+// Search query schema - supports both q and searchQuery for backward compatibility
 const searchEventsSchema = z.object({
   query: z.object({
-    q: z.string().min(1, 'Search query is required'),
+    q: z.string().max(500, 'Search query cannot exceed 500 characters').optional(),
+    searchQuery: z.string().max(500, 'Search query cannot exceed 500 characters').optional(),
     page: z.string().regex(/^\d+$/).transform(Number).optional(),
     limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-    category: z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']).optional(),
+    offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+    category: z.union([
+      z.enum(['Academic', 'Career', 'Clubs', 'Sports', 'Social', 'Cultural', 'Other']),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
+    status: z.union([
+      z.nativeEnum(EventStatus),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
-    sort: z.enum(['startDate', '-startDate', 'createdAt', '-createdAt', 'popularity', '-popularity', 'currentRegistrations', '-currentRegistrations', 'relevance']).optional()
-  })
+    tags: z.union([
+      z.string(),
+      z.string().transform((val) => val.split(','))
+    ]).optional(),
+    location: z.string().optional(),
+    capacity: z.enum(['available', 'full']).optional(),
+    includePast: z.string().transform((val) => val === 'true').optional(),
+    sort: z.enum(['date', 'popularity', 'capacity', 'relevance', 'created', '-date', '-popularity', '-capacity', '-relevance', '-created', 'startDate', '-startDate', 'createdAt', '-createdAt', 'title', '-title', 'currentRegistrations', '-currentRegistrations']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional()
+  }).refine(
+    (data) => {
+      // At least one of q or searchQuery should be provided, or it's optional for filtering only
+      return true; // Allow empty search for filtering only
+    },
+    {
+      message: 'Either q or searchQuery must be provided',
+      path: ['q']
+    }
+  )
 });
 
 // Validation middleware factory
