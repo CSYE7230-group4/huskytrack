@@ -16,6 +16,7 @@ const {
 
 // NEW REQUIRED IMPORT
 const registrationService = require('../services/registrationService');
+const { Notification, NotificationType } = require('../models/Notification');
 
 
 /**
@@ -28,6 +29,23 @@ const createEvent = asyncHandler(async (req, res) => {
     const eventData = req.body;
 
     const event = await eventService.createEvent(eventData, organizerId);
+
+    // Send notification to organizer if event is published directly
+    if (event.status === 'PUBLISHED') {
+        try {
+            await Notification.create({
+                user: organizerId,
+                type: NotificationType.SYSTEM_ANNOUNCEMENT,
+                title: 'Event Published Successfully',
+                message: `Your event "${event.title}" has been published and is now visible to all users.`,
+                event: event._id,
+                actionUrl: `/app/events/${event._id}`
+            });
+        } catch (error) {
+            console.error('Error creating publish notification:', error);
+            // Don't fail the request if notification fails
+        }
+    }
 
     res.status(201).json({
         success: true,
@@ -276,6 +294,21 @@ const publishEvent = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
     const event = await eventService.publishEvent(id, userId);
+
+    // Send notification to organizer
+    try {
+        await Notification.create({
+            user: userId,
+            type: NotificationType.SYSTEM_ANNOUNCEMENT,
+            title: 'Event Published Successfully',
+            message: `Your event "${event.title}" has been published and is now visible to all users.`,
+            event: event._id,
+            actionUrl: `/app/events/${event._id}`
+        });
+    } catch (error) {
+        console.error('Error creating publish notification:', error);
+        // Don't fail the request if notification fails
+    }
 
     res.status(200).json({
         success: true,
