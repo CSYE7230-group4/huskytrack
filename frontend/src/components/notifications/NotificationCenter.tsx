@@ -176,7 +176,7 @@ export default function NotificationCenter({
     }
   }, [isOpen, isMobile]);
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     const url = getNotificationUrl(notification);
     
     console.log('[NotificationCenter] Clicked notification:', {
@@ -184,8 +184,20 @@ export default function NotificationCenter({
       type: notification.type,
       url: url,
       actionUrl: notification.actionUrl,
-      eventId: notification.relatedEventId || notification.event
+      eventId: notification.relatedEventId || notification.event,
+      isRead: notification.isRead
     });
+    
+    // Mark as read if unread (do this first, don't wait for navigation)
+    if (!notification.isRead && notification.status !== "READ" && onMarkAsRead) {
+      try {
+        // Mark as read optimistically (don't await - let it happen in background)
+        onMarkAsRead(notification._id);
+      } catch (err) {
+        console.error('[NotificationCenter] Error marking notification as read:', err);
+        // Don't block navigation if mark as read fails
+      }
+    }
     
     if (url) {
       // Close notification center first
@@ -444,14 +456,20 @@ export default function NotificationCenter({
           {!isLoading && !error && notifications.length > 0 && (
             <>
               <div className="divide-y divide-gray-100" role="list">
-                {notifications.map((notification, index) => (
-                  <NotificationItem
-                    key={notification._id || `notification-${index}`}
-                    notification={notification}
-                    onClick={handleNotificationClick}
-                    onMarkAsRead={onMarkAsRead}
-                  />
-                ))}
+                {notifications.map((notification) => {
+                  // Ensure unique key - use _id with timestamp as fallback to avoid duplicates
+                  const uniqueKey = notification._id 
+                    ? `${notification._id}-${notification.createdAt || ''}` 
+                    : `notification-${notification.type}-${notification.createdAt || Date.now()}`;
+                  return (
+                    <NotificationItem
+                      key={uniqueKey}
+                      notification={notification}
+                      onClick={handleNotificationClick}
+                      onMarkAsRead={onMarkAsRead}
+                    />
+                  );
+                })}
               </div>
 
               {/* Load More Button */}

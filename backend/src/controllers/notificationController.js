@@ -195,22 +195,47 @@ const markAsRead = asyncHandler(async (req, res) => {
   const notificationId = req.params.id;
   const userId = req.userId || req.user?._id || req.user?.id;
 
+  console.log(`[Notifications API] Mark as read request: notificationId=${notificationId}, userId=${userId}`);
+
+  // Ensure userId is properly formatted
+  const userIdObjectId = mongoose.Types.ObjectId.isValid(userId) 
+    ? new mongoose.Types.ObjectId(userId) 
+    : userId;
+
   // Find notification and verify ownership
   const notification = await Notification.findById(notificationId);
 
   if (!notification) {
+    console.log(`[Notifications API] Notification not found: ${notificationId}`);
     return res.status(404).json({
       success: false,
       message: 'Notification not found',
     });
   }
 
-  if (notification.user.toString() !== userId) {
+  // Compare user IDs properly - handle both ObjectId and string formats
+  const notificationUserId = notification.user._id || notification.user;
+  const notificationUserIdStr = notificationUserId.toString();
+  const requestUserIdStr = userIdObjectId.toString ? userIdObjectId.toString() : String(userIdObjectId);
+
+  console.log(`[Notifications API] Comparing user IDs: notification.user=${notificationUserIdStr}, request.user=${requestUserIdStr}`);
+
+  if (notificationUserIdStr !== requestUserIdStr) {
+    console.log(`[Notifications API] Authorization failed: user IDs don't match`);
+    console.log(`[Notifications API] Notification user ID: ${notificationUserIdStr} (type: ${typeof notificationUserIdStr})`);
+    console.log(`[Notifications API] Request user ID: ${requestUserIdStr} (type: ${typeof requestUserIdStr})`);
+    console.log(`[Notifications API] Notification object:`, {
+      id: notification._id,
+      user: notification.user,
+      userType: typeof notification.user
+    });
     return res.status(403).json({
       success: false,
       message: 'Not authorized to access this notification',
     });
   }
+
+  console.log(`[Notifications API] Authorization successful, marking notification as read`);
 
   // Mark as read
   await notification.markAsRead();
