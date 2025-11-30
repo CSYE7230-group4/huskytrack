@@ -41,10 +41,21 @@ interface NotificationCenterProps {
 function getNotificationUrl(notification: Notification): string | null {
   // Handle both relatedEventId and event fields
   const eventRef = notification.relatedEventId || notification.event;
-  const eventId =
-    typeof eventRef === "string"
-      ? eventRef
-      : eventRef?._id;
+  
+  // Extract event ID - handle both string and object formats
+  let eventId: string | undefined;
+  if (typeof eventRef === "string") {
+    eventId = eventRef;
+  } else if (eventRef && typeof eventRef === "object") {
+    // Could be { _id: string, title: string } or ObjectId
+    eventId = eventRef._id || eventRef.toString?.() || String(eventRef);
+  }
+  
+  console.log('[getNotificationUrl] Extracted event ID:', {
+    eventRef,
+    eventId,
+    type: notification.type
+  });
 
   switch (notification.type) {
     case NotificationType.EVENT_REMINDER:
@@ -71,8 +82,19 @@ function getNotificationUrl(notification: Notification): string | null {
       return "/app/events";
 
     case NotificationType.SYSTEM_ANNOUNCEMENT:
-      // Use actionUrl if provided, otherwise stay on current page
-      return notification.actionUrl || null;
+      // Use actionUrl if provided, but normalize it
+      if (notification.actionUrl) {
+        // If actionUrl doesn't start with /app, prepend it
+        const actionUrl = notification.actionUrl.startsWith('/app') 
+          ? notification.actionUrl 
+          : `/app${notification.actionUrl}`;
+        return actionUrl;
+      }
+      // If there's an event ID, navigate to that event
+      if (eventId) {
+        return `/app/events/${eventId}`;
+      }
+      return null;
 
     default:
       if (eventId) {
@@ -156,9 +178,28 @@ export default function NotificationCenter({
 
   const handleNotificationClick = (notification: Notification) => {
     const url = getNotificationUrl(notification);
+    
+    console.log('[NotificationCenter] Clicked notification:', {
+      id: notification._id,
+      type: notification.type,
+      url: url,
+      actionUrl: notification.actionUrl,
+      eventId: notification.relatedEventId || notification.event
+    });
+    
     if (url) {
-      navigate(url);
+      // Close notification center first
       onClose();
+      
+      // Small delay to ensure center closes smoothly, then navigate
+      setTimeout(() => {
+        // URL should already be normalized by getNotificationUrl, but ensure it's correct
+        // getNotificationUrl already returns URLs starting with /app
+        console.log('[NotificationCenter] Navigating to:', url);
+        navigate(url);
+      }, 100);
+    } else {
+      console.warn('[NotificationCenter] No URL found for notification:', notification);
     }
   };
 
@@ -390,14 +431,22 @@ export default function NotificationCenter({
           {!isLoading && !error && notifications.length === 0 && (
             <EmptyNotificationState />
           )}
+          
+          {/* Debug: Show notification count in development */}
+          {process.env.NODE_ENV === 'development' && notifications.length > 0 && (
+            <div className="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
+              Showing {notifications.length} notification{notifications.length !== 1 ? 's' : ''} 
+              ({notifications.filter(n => !n.isRead).length} unread, {notifications.filter(n => n.isRead).length} read)
+            </div>
+          )}
 
           {/* Notifications List */}
           {!isLoading && !error && notifications.length > 0 && (
             <>
-              <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
+              <div className="divide-y divide-gray-100" role="list">
+                {notifications.map((notification, index) => (
                   <NotificationItem
-                    key={notification._id}
+                    key={notification._id || `notification-${index}`}
                     notification={notification}
                     onClick={handleNotificationClick}
                     onMarkAsRead={onMarkAsRead}

@@ -14,6 +14,7 @@ import {
   Reply,
   Mail,
   Megaphone,
+  Pencil,
 } from "lucide-react";
 import { Notification, NotificationType } from "../../types/notifications";
 import { formatRelativeTime } from "../../utils/formatTimestamp";
@@ -37,7 +38,7 @@ function getNotificationIcon(type: NotificationType): ReactNode {
     case NotificationType.REGISTRATION_APPROVED:
       return <CheckCircle {...iconProps} />;
     case NotificationType.EVENT_UPDATED:
-      return <Info {...iconProps} />;
+      return <Pencil {...iconProps} />;
     case NotificationType.EVENT_CANCELLED:
       return <XCircle {...iconProps} />;
     case NotificationType.WAITLIST_PROMOTED:
@@ -93,16 +94,21 @@ export default function NotificationItem({
   onClick,
   onMarkAsRead,
 }: NotificationItemProps) {
-  const isRead = notification.isRead || notification.status === "READ";
+  // Determine read status - check both isRead property and status field
+  // Ensure this updates reactively when notification changes
+  const isRead = Boolean(
+    notification.isRead === true || 
+    notification.status === "READ"
+  );
   const iconColorClass = getIconColorClass(notification.type, isRead);
   
-  // State for timestamp that updates periodically
-  const [currentTime, setCurrentTime] = useState(() => new Date());
+  // State to force re-render every minute to update relative timestamps
+  const [, setUpdateCounter] = useState(0);
 
-  // Update timestamp every minute (60000ms)
+  // Update timestamp every minute (60000ms) to refresh relative time display
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date());
+      setUpdateCounter(prev => prev + 1);
     }, 60000); // Update every minute
 
     return () => clearInterval(interval);
@@ -136,10 +142,22 @@ export default function NotificationItem({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
+        {/* Title */}
+        {notification.title && (
+          <p
+            className={`
+              text-xs font-semibold mb-1
+              ${isRead ? "text-gray-600" : "text-gray-800"}
+            `}
+          >
+            {notification.title}
+          </p>
+        )}
+        {/* Message */}
         <p
           className={`
-            text-sm font-medium
-            ${isRead ? "text-gray-700" : "text-gray-900"}
+            text-sm
+            ${isRead ? "text-gray-600 font-normal" : "text-gray-900 font-medium"}
             line-clamp-2
           `}
         >

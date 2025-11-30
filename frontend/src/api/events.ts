@@ -199,14 +199,24 @@ export async function getOrganizerEvents(options?: {
  * Cancel event (status -> cancelled)
  */
 export async function cancelEvent(id: string): Promise<void> {
-  // Replace when backend ready:
-  // const res = await fetch(`${API_BASE}/${id}/cancel`, {
-  //   method: "POST",
-  //   credentials: "include",
-  // });
-  // if (!res.ok) throw new Error(await safeError(res));
+  try {
+    const res = await api.post(`${API_BASE}/${id}/cancel`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err?.message || "Failed to cancel event");
+  }
+}
 
-  console.log("Mock cancel event:", id);
+/**
+ * Publish event (transition from DRAFT to PUBLISHED)
+ */
+export async function publishEvent(id: string): Promise<void> {
+  try {
+    const res = await api.post(`${API_BASE}/${id}/publish`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err?.message || "Failed to publish event");
+  }
 }
 
 /**

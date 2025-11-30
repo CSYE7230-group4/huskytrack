@@ -8,11 +8,13 @@ import Skeleton from "../components/ui/Skeleton";
 import { getEventById, updateEvent } from "../api/events";
 import { EventFormValues, EventStatus } from "../types/events";
 import { useToast } from "../hooks/useToast";
+import { useNotificationRefresh } from "../contexts/NotificationContext";
 
 export default function EditEvent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { refreshNotifications } = useNotificationRefresh();
 
   const [initialValues, setInitialValues] = useState<EventFormValues | null>(null);
   const [originalStatus, setOriginalStatus] = useState<EventStatus | null>(null);
@@ -93,10 +95,22 @@ export default function EditEvent() {
     try {
       // Backend does not allow PUBLISHED -> DRAFT transition.
       // If the event is already published, always keep it published on update
+      // Map "publish" action to "published" status
       const statusForUpdate: EventStatus =
-        originalStatus === "published" ? "published" : action;
+        originalStatus === "published" 
+          ? "published" 
+          : action === "publish" 
+            ? "published" 
+            : "draft";
 
       await updateEvent(id!, values, statusForUpdate);
+
+      // Refresh notifications after updating event (sends notifications to attendees and organizer)
+      // Small delay to ensure notification is committed to database
+      setTimeout(async () => {
+        console.log("[EditEvent] Refreshing notifications after update...");
+        await refreshNotifications();
+      }, 500);
 
       showToast("Event updated successfully!", "success");
 

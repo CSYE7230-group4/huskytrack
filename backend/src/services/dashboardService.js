@@ -3,6 +3,7 @@
  * Aggregates data for the user dashboard feed
  */
 
+const mongoose = require('mongoose');
 const eventRepository = require('../repositories/eventRepository');
 const eventRegistrationRepository = require('../repositories/eventRegistrationRepository');
 const { EventRegistration, RegistrationStatus } = require('../models/EventRegistration');
@@ -35,14 +36,34 @@ class DashboardService {
     // 3. User stats (attended, registered, bookmarked)
     const statsPromise = this._getUserStats(userId);
 
-    // 4. Unread notifications (5 most recent)
+    // 4. Recent notifications (5 most recent, any status)
+    // Mongoose will handle ObjectId conversion automatically
+    console.log(`[Dashboard] Fetching notifications for user: ${userId}`);
+    
     const notificationsPromise = Notification.find({
       user: userId,
-      status: NotificationStatus.UNREAD
+      status: { $ne: NotificationStatus.ARCHIVED }
     })
       .sort({ createdAt: -1 })
       .limit(5)
-      .lean();
+      .select('_id title message createdAt status actionUrl')
+      .lean()
+      .then((notifications) => {
+        console.log(`[Dashboard] Found ${notifications.length} notifications for user ${userId}`);
+        if (notifications.length > 0) {
+          console.log(`[Dashboard] Notification titles:`, notifications.map(n => n.title));
+        } else {
+          // Debug: Check if there are ANY notifications for this user
+          Notification.find({ user: userId })
+            .limit(1)
+            .lean()
+            .then((allNotifs) => {
+              console.log(`[Dashboard] Total notifications (any status) for user ${userId}: ${allNotifs.length}`);
+            })
+            .catch((err) => console.error('[Dashboard] Error checking all notifications:', err));
+        }
+        return notifications;
+      });
 
     // 5. Recommended events
     const recommendationsPromise = recommendationService.getRecommendedEvents(userId, {
@@ -117,12 +138,30 @@ class DashboardService {
       .slice(0, 5)
       .map((b) => b.event);
 
+    // Format notifications to match frontend expectations
+    const formattedNotifications = (notifications || []).map((n, index) => {
+      const notificationId = n._id ? (n._id.toString ? n._id.toString() : String(n._id)) : `temp-${Date.now()}-${index}`;
+      return {
+        _id: notificationId,
+        title: n.title || 'Notification',
+        message: n.message || '',
+        createdAt: n.createdAt ? (n.createdAt.toISOString ? n.createdAt.toISOString() : new Date(n.createdAt).toISOString()) : new Date().toISOString(),
+        status: n.status || 'UNREAD',
+        actionUrl: n.actionUrl
+      };
+    });
+
+    // Debug: Log notification count
+    if (formattedNotifications.length > 0) {
+      console.log(`[Dashboard] Found ${formattedNotifications.length} notifications for user ${userId}`);
+    }
+
     return {
       upcomingEvents: mergedUpcoming,
       bookmarks: bookmarkedEvents,
       recommendations: recommendations || [],
       stats,
-      notifications,
+      notifications: formattedNotifications,
       calendar
     };
   }

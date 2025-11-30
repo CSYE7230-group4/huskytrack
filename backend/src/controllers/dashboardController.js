@@ -11,9 +11,19 @@ const { asyncHandler } = require('../utils/errors');
  * GET /api/v1/dashboard/feed
  */
 const getDashboard = asyncHandler(async (req, res) => {
-  const userId = req.userId || (req.user && req.user._id);
+  const userId = req.userId || req.user?._id || req.user?.id;
 
-  const data = await dashboardService.getDashboardFeed(userId.toString());
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Ensure userId is a valid ObjectId string
+  const userIdStr = userId.toString();
+  
+  const data = await dashboardService.getDashboardFeed(userIdStr);
 
   res.status(200).json({
     success: true,

@@ -8,6 +8,7 @@ import Button from "../components/ui/Button";
 import NotificationBell from "../components/notifications/NotificationBell";
 import NotificationCenter from "../components/notifications/NotificationCenter";
 import { useNotifications } from "../hooks/useNotifications";
+import { NotificationProvider } from "../contexts/NotificationContext";
 import { useRef } from "react";
 
 export default function MainLayout() {
@@ -47,13 +48,14 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <NotificationProvider refreshNotifications={refreshNotifications}>
+      <div className="min-h-screen flex bg-background">
 
-      {/* Sidebar */}
-      <SidebarLayout />
+        {/* Sidebar */}
+        <SidebarLayout />
 
-      {/* Right Section */}
-      <div className="flex-1 flex flex-col">
+        {/* Right Section */}
+        <div className="flex-1 flex flex-col">
 
         {/* Top Navbar */}
         <header className="bg-white/90 backdrop-blur shadow-sm">
@@ -141,7 +143,8 @@ export default function MainLayout() {
         </main>
 
         <Footer />
+        </div>
       </div>
-    </div>
+    </NotificationProvider>
   );
 }

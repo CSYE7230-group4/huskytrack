@@ -1,6 +1,6 @@
 // src/pages/OrganizerDashboard.tsx
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageWrapper from "../components/ui/PageWrapper";
@@ -21,6 +21,7 @@ import {
 
 import { OrganizerEvent, OrganizerEventStatus } from "../types/events";
 import { useToast } from "../hooks/useToast";
+import { useNotificationRefresh } from "../contexts/NotificationContext";
 import Skeleton from "../components/ui/Skeleton";
 
 const ORGANIZER_TABS: { key: OrganizerEventStatus; label: string }[] = [
@@ -33,6 +34,7 @@ const ORGANIZER_TABS: { key: OrganizerEventStatus; label: string }[] = [
 const OrganizerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { refreshNotifications } = useNotificationRefresh();
 
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [dashboardData, setDashboardData] = useState<{
@@ -49,28 +51,25 @@ const OrganizerDashboard: React.FC = () => {
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
-  const [processingEventId, setProcessingEventId] = useState<string | null>(
-    null
-  );
-
   /* --------------------------------------------
      LOAD DASHBOARD DATA (stats + recent)
   --------------------------------------------- */
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        setIsLoadingDashboard(true);
-        const data = await getOrganizerDashboardData();
-        setDashboardData(data);
-      } catch (error) {
-        showToast("Error loading dashboard", "error");
-      } finally {
-        setIsLoadingDashboard(false);
-      }
-    };
-
-    loadDashboard();
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setIsLoadingDashboard(true);
+      const data = await getOrganizerDashboardData();
+      setDashboardData(data);
+    } catch (error) {
+      console.error("Error loading dashboard:", error);
+      showToast("Error loading dashboard", "error");
+    } finally {
+      setIsLoadingDashboard(false);
+    }
   }, [showToast]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   /* --------------------------------------------
      LOAD EVENTS
@@ -137,42 +136,53 @@ const OrganizerDashboard: React.FC = () => {
 
   const handleCancel = async (id: string) => {
     try {
-      setProcessingEventId(id);
       await cancelEvent(id);
 
-      setEvents((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status: "cancelled" } : e))
-      );
+      // Refresh dashboard stats and events list immediately after cancelling
+      await Promise.all([
+        loadDashboardData(), // Use the callback function to refresh stats
+        getOrganizerEvents({}).then(eventsData => {
+          setEvents(eventsData);
+        }).catch(err => {
+          console.error("Error reloading events:", err);
+        })
+      ]);
+
+      // Refresh notifications after cancelling event (sends notifications to attendees and organizer)
+      // Small delay to ensure notification is committed to database
+      setTimeout(async () => {
+        console.log("[OrganizerDashboard] Refreshing notifications after cancel...");
+        await refreshNotifications();
+      }, 500);
 
       showToast("Event cancelled", "success");
     } catch (err) {
+      console.error("Error cancelling event:", err);
       showToast("Failed to cancel event", "error");
-    } finally {
-      setProcessingEventId(null);
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      setProcessingEventId(id);
       await deleteEvent(id);
 
-      // Remove from events list
+      // Remove from events list immediately
       setEvents((prev) => prev.filter((e) => e.id !== id));
 
-      // Refresh dashboard stats
-      try {
-        const data = await getOrganizerDashboardData();
-        setDashboardData(data);
-      } catch (error) {
-        // Silently fail - stats will refresh on next page load
-      }
+      // Refresh dashboard stats and reload events list
+      await Promise.all([
+        loadDashboardData(), // Refresh stats using the callback
+        getOrganizerEvents({}).then(eventsData => {
+          setEvents(eventsData);
+        }).catch(err => {
+          console.error("Error reloading events after delete:", err);
+        })
+      ]);
 
       showToast("Event deleted", "success");
     } catch (err) {
+      console.error("Error deleting event:", err);
       showToast("Failed to delete event", "error");
-    } finally {
-      setProcessingEventId(null);
     }
   };
 
@@ -236,7 +246,7 @@ const OrganizerDashboard: React.FC = () => {
               <div className="flex flex-col md:flex-row gap-2 md:items-center">
                 <SearchBar
                   value={search}
-                  onChange={setSearch}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search your events..."
                   className="w-full md:w-56"
                 />

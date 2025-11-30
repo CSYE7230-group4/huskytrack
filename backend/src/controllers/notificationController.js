@@ -3,7 +3,8 @@
  * Handles HTTP requests for notification operations
  */
 
-const { Notification } = require('../models/Notification');
+const mongoose = require('mongoose');
+const { Notification, NotificationStatus } = require('../models/Notification');
 const { asyncHandler } = require('../utils/errors');
 
 /**
@@ -12,8 +13,16 @@ const { asyncHandler } = require('../utils/errors');
  * Access: Authenticated users
  */
 const getNotifications = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { isRead, type, page = 1, limit = 20 } = req.query;
+  const userId = req.userId || req.user?._id || req.user?.id;
+  
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  const { isRead, type, page = 1, limit = 50 } = req.query; // Increased default limit
 
   // Build query options
   const options = {
@@ -22,14 +31,32 @@ const getNotifications = asyncHandler(async (req, res) => {
     skip: (parseInt(page) - 1) * parseInt(limit),
   };
 
-  // Build filter query
-  const filterQuery = { user: userId };
-  if (isRead !== undefined) {
-    filterQuery.status = isRead === 'true' ? 'READ' : 'UNREAD';
+  // Build filter query - ensure userId is properly formatted and exclude archived
+  const userIdObjectId = mongoose.Types.ObjectId.isValid(userId) 
+    ? new mongoose.Types.ObjectId(userId) 
+    : userId;
+
+  // Build base query - exclude archived notifications
+  const filterQuery = { 
+    user: userIdObjectId,
+    status: { $ne: NotificationStatus.ARCHIVED } // Exclude archived notifications
+  };
+  
+  // If isRead is specified, filter by read status (but still exclude archived)
+  if (isRead !== undefined && isRead !== null && isRead !== '') {
+    const readStatus = isRead === 'true' ? NotificationStatus.READ : NotificationStatus.UNREAD;
+    // Combine: status must be READ/UNREAD AND not ARCHIVED
+    filterQuery.status = readStatus;
   }
+  // If isRead is not specified, filterQuery.status remains { $ne: ARCHIVED }
+  // which means it will return both READ and UNREAD (but not ARCHIVED)
+  
   if (type) {
     filterQuery.type = type;
   }
+
+  console.log(`[Notifications API] Fetching notifications for user: ${userId}, filter:`, JSON.stringify(filterQuery));
+  console.log(`[Notifications API] Query params: page=${options.page}, limit=${options.limit}, isRead=${isRead}`);
 
   // Get notifications
   const notifications = await Notification.find(filterQuery)
@@ -38,6 +65,40 @@ const getNotifications = asyncHandler(async (req, res) => {
     .limit(options.limit)
     .skip(options.skip)
     .lean();
+  
+  console.log(`[Notifications API] Found ${notifications.length} notifications for user ${userId}`);
+  
+  // Debug: Check total notifications for this user (any status)
+  const totalCountDebug = await Notification.countDocuments({ user: userIdObjectId });
+  const unreadCountDebug = await Notification.countDocuments({ 
+    user: userIdObjectId, 
+    status: NotificationStatus.UNREAD 
+  });
+  const readCountDebug = await Notification.countDocuments({ 
+    user: userIdObjectId, 
+    status: NotificationStatus.READ 
+  });
+  
+  console.log(`[Notifications API] Total notifications breakdown for user ${userId}:`);
+  console.log(`  - Total (any status): ${totalCountDebug}`);
+  console.log(`  - Unread: ${unreadCountDebug}`);
+  console.log(`  - Read: ${readCountDebug}`);
+  console.log(`  - Returned in response: ${notifications.length}`);
+  
+  // Log notification details
+  if (notifications.length > 0) {
+    console.log(`[Notifications API] Notification details:`);
+    notifications.forEach((n, idx) => {
+      console.log(`  [${idx + 1}] ID: ${n._id}, Status: ${n.status}, Type: ${n.type}, Title: ${n.title}`);
+    });
+  } else if (totalCountDebug > 0) {
+    // Get sample notifications to see what's in the database
+    const sampleNotifs = await Notification.find({ user: userIdObjectId }).limit(5).lean();
+    console.log(`[Notifications API] Sample notifications in DB (first 5):`);
+    sampleNotifs.forEach((n, idx) => {
+      console.log(`  [${idx + 1}] ID: ${n._id}, Status: ${n.status}, Type: ${n.type}, Title: ${n.title}`);
+    });
+  }
 
   // Get total count for pagination
   const totalCount = await Notification.countDocuments(filterQuery);
@@ -57,9 +118,11 @@ const getNotifications = asyncHandler(async (req, res) => {
       }
     }
 
+    const notificationId = n._id ? (typeof n._id === 'string' ? n._id : (n._id.toString ? n._id.toString() : String(n._id))) : null;
+    
     return {
-      _id: n._id,
-      userId: n.user.toString(),
+      _id: notificationId,
+      userId: n.user ? (typeof n.user === 'string' ? n.user : (n.user.toString ? n.user.toString() : String(n.user))) : null,
       type: n.type,
       status: n.status,
       title: n.title,
@@ -94,9 +157,26 @@ const getNotifications = asyncHandler(async (req, res) => {
  * Access: Authenticated users
  */
 const getUnreadCount = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.userId || req.user?._id || req.user?.id;
 
-  const unreadCount = await Notification.getUnreadCount(userId);
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Ensure userId is properly formatted
+  const userIdObjectId = mongoose.Types.ObjectId.isValid(userId) 
+    ? new mongoose.Types.ObjectId(userId) 
+    : userId;
+
+  const unreadCount = await Notification.countDocuments({
+    user: userIdObjectId,
+    status: NotificationStatus.UNREAD
+  });
+
+  console.log(`[Notifications] Unread count for user ${userId}: ${unreadCount}`);
 
   res.status(200).json({
     success: true,
@@ -113,7 +193,7 @@ const getUnreadCount = asyncHandler(async (req, res) => {
  */
 const markAsRead = asyncHandler(async (req, res) => {
   const notificationId = req.params.id;
-  const userId = req.user.id;
+  const userId = req.userId || req.user?._id || req.user?.id;
 
   // Find notification and verify ownership
   const notification = await Notification.findById(notificationId);
@@ -154,7 +234,14 @@ const markAsRead = asyncHandler(async (req, res) => {
  * Access: Authenticated users
  */
 const markAllAsRead = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.userId || req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
 
   const result = await Notification.markAllAsRead(userId);
 

@@ -21,7 +21,14 @@ export default function EventDetails() {
         const data = await getEventById(id);
         setEvent(data);
       } catch (err: any) {
-        setError(err?.message || "Failed to load event");
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to load event";
+        console.error('[EventDetails] Error loading event:', {
+          id,
+          error: errorMessage,
+          status: err?.response?.status,
+          fullError: err
+        });
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
