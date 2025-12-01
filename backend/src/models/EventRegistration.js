@@ -116,7 +116,8 @@ EventRegistrationSchema.post('save', async function(doc) {
     });
 
     event.currentRegistrations = activeCount;
-    await event.save();
+    // Save without validation to avoid issues with past event dates
+    await event.save({ validateBeforeSave: false });
   } catch (error) {
     console.error('Error updating event registration count:', error);
   }
@@ -139,7 +140,8 @@ EventRegistrationSchema.post('findOneAndDelete', async function(doc) {
     });
 
     event.currentRegistrations = activeCount;
-    await event.save();
+    // Save without validation to avoid issues with past event dates
+    await event.save({ validateBeforeSave: false });
   } catch (error) {
     console.error('Error updating event registration count:', error);
   }
@@ -166,7 +168,8 @@ EventRegistrationSchema.post('deleteOne', async function() {
     });
 
     event.currentRegistrations = activeCount;
-    await event.save();
+    // Save without validation to avoid issues with past event dates
+    await event.save({ validateBeforeSave: false });
   } catch (error) {
     console.error('Error updating event registration count:', error);
   }

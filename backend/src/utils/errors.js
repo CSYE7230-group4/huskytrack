@@ -1,16 +1,17 @@
 /**
- * Error Response Utilities
- * Standardized error classes and response formatting
+ * Custom Error Classes
+ * Provides custom error types for better error handling
  */
 
 /**
- * Base API Error Class
+ * Base API Error class
+ * All custom errors extend this class
  */
 class ApiError extends Error {
     constructor(statusCode, message, errors = null) {
         super(message);
+        this.name = 'ApiError';
         this.statusCode = statusCode;
-        this.success = false;
         this.errors = errors;
         Error.captureStackTrace(this, this.constructor);
     }
@@ -182,86 +183,71 @@ const sendError = (res, statusCode = 500, message, errors = null) => {
  * @returns {Function} Express middleware function
  */
 const asyncHandler = (fn) => {
-    return (req, res, next) => {
-        Promise.resolve(fn(req, res, next)).catch(next);
-    };
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
 };
 
 /**
  * Global error handler middleware
- * Should be used as the last middleware in Express app
+ * Handles custom errors and standardizes error responses
  */
 const errorHandler = (err, req, res, next) => {
-    // Log error for debugging
-    console.error('Error:', {
-        message: err.message,
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-        path: req.path,
-        method: req.method
+  // Log error for debugging
+  console.error('Error:', err);
+
+  // Handle custom errors with statusCode
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message || 'An error occurred',
+      ...(err.errors && { errors: err.errors }),
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
-    
-    // Handle known API errors
-    if (err instanceof ApiError) {
-        return res.status(err.statusCode).json({
-            success: false,
-            message: err.message,
-            ...(err.errors && { errors: err.errors }),
-            ...(err.retryAfter && { retryAfter: err.retryAfter })
-        });
-    }
-    
-    // Handle Mongoose validation errors
-    if (err.name === 'ValidationError') {
-        const errors = Object.values(err.errors).map(e => ({
-            field: e.path,
-            message: e.message
-        }));
-        
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors
-        });
-    }
-    
-    // Handle Mongoose duplicate key errors
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyPattern)[0];
-        return res.status(409).json({
-            success: false,
-            message: `${field} already exists`
-        });
-    }
-    
-    // Handle JWT errors
-    if (err.name === 'JsonWebTokenError') {
-        return res.status(401).json({
-            success: false,
-            message: 'Invalid token'
-        });
-    }
-    
-    if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({
-            success: false,
-            message: 'Token expired'
-        });
-    }
-    
-    // Handle Mongoose cast errors (invalid ObjectId)
-    if (err.name === 'CastError') {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid ID format'
-        });
-    }
-    
-    // Default to 500 server error
-    res.status(err.statusCode || 500).json({
-        success: false,
-        message: err.message || 'Internal server error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  }
+
+  // Handle Mongoose validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      errors: Object.values(err.errors).map(e => ({
+        field: e.path,
+        message: e.message
+      }))
     });
+  }
+
+  // Handle Mongoose duplicate key errors
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyPattern)[0];
+    return res.status(409).json({
+      success: false,
+      message: `${field} already exists`
+    });
+  }
+
+  // Handle JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token expired'
+    });
+  }
+
+  // Default error response
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 };
 
 module.exports = {
@@ -283,4 +269,3 @@ module.exports = {
     asyncHandler,
     errorHandler
 };
-

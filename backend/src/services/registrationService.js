@@ -613,7 +613,10 @@ class RegistrationService {
         actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          eventDate: event.startDate
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
       console.log(`[Registration] ✓ Created notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
@@ -652,7 +655,11 @@ class RegistrationService {
         actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          waitlistPosition: position
+          startDate: event.startDate,
+          location: event.location,
+          waitlistPosition: position,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
       console.log(`[Registration] ✓ Created waitlist notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
@@ -691,7 +698,10 @@ class RegistrationService {
         actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          promotedFrom: 'waitlist'
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
       console.log(`[Registration] ✓ Created waitlist promotion notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);

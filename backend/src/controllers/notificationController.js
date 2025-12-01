@@ -12,7 +12,7 @@ const { asyncHandler } = require('../utils/errors');
  * GET /api/v1/notifications/me
  * Access: Authenticated users
  */
-const getNotifications = asyncHandler(async (req, res) => {
+const getUserNotifications = asyncHandler(async (req, res) => {
   const userId = req.userId || req.user?._id || req.user?.id;
   
   if (!userId) {
@@ -279,10 +279,144 @@ const markAllAsRead = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Get notification by ID
+ * GET /api/v1/notifications/:id
+ * Access: Notification owner
+ */
+const getNotificationById = asyncHandler(async (req, res) => {
+  const notificationId = req.params.id;
+  const userId = req.userId || req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Ensure userId is properly formatted
+  const userIdObjectId = mongoose.Types.ObjectId.isValid(userId) 
+    ? new mongoose.Types.ObjectId(userId) 
+    : userId;
+
+  // Find notification and verify ownership
+  const notification = await Notification.findById(notificationId)
+    .populate('event', '_id title')
+    .lean();
+
+  if (!notification) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found',
+    });
+  }
+
+  // Compare user IDs properly - handle both ObjectId and string formats
+  const notificationUserId = notification.user._id || notification.user;
+  const notificationUserIdStr = notificationUserId.toString();
+  const requestUserIdStr = userIdObjectId.toString ? userIdObjectId.toString() : String(userIdObjectId);
+
+  if (notificationUserIdStr !== requestUserIdStr) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to access this notification',
+    });
+  }
+
+  // Format notification for response
+  let relatedEventId = undefined;
+  if (notification.event) {
+    if (typeof notification.event === 'object' && notification.event._id) {
+      relatedEventId = { _id: notification.event._id.toString(), title: notification.event.title };
+    } else if (typeof notification.event === 'string' || notification.event.toString) {
+      relatedEventId = notification.event.toString();
+    }
+  }
+
+  const formattedNotification = {
+    _id: notification._id ? (typeof notification._id === 'string' ? notification._id : (notification._id.toString ? notification._id.toString() : String(notification._id))) : null,
+    userId: notification.user ? (typeof notification.user === 'string' ? notification.user : (notification.user.toString ? notification.user.toString() : String(notification.user))) : null,
+    type: notification.type,
+    status: notification.status,
+    title: notification.title,
+    message: notification.message,
+    relatedEventId,
+    relatedData: notification.metadata || {},
+    actionUrl: notification.actionUrl,
+    readAt: notification.readAt,
+    archivedAt: notification.archivedAt,
+    createdAt: notification.createdAt,
+    updatedAt: notification.updatedAt,
+    isRead: notification.status === 'READ',
+  };
+
+  res.status(200).json({
+    success: true,
+    data: {
+      notification: formattedNotification,
+    },
+  });
+});
+
+/**
+ * Delete notification
+ * DELETE /api/v1/notifications/:id
+ * Access: Notification owner
+ */
+const deleteNotification = asyncHandler(async (req, res) => {
+  const notificationId = req.params.id;
+  const userId = req.userId || req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Ensure userId is properly formatted
+  const userIdObjectId = mongoose.Types.ObjectId.isValid(userId) 
+    ? new mongoose.Types.ObjectId(userId) 
+    : userId;
+
+  // Find notification and verify ownership
+  const notification = await Notification.findById(notificationId);
+
+  if (!notification) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found',
+    });
+  }
+
+  // Compare user IDs properly - handle both ObjectId and string formats
+  const notificationUserId = notification.user._id || notification.user;
+  const notificationUserIdStr = notificationUserId.toString();
+  const requestUserIdStr = userIdObjectId.toString ? userIdObjectId.toString() : String(userIdObjectId);
+
+  if (notificationUserIdStr !== requestUserIdStr) {
+    return res.status(403).json({
+      success: false,
+      message: 'Not authorized to delete this notification',
+    });
+  }
+
+  // Delete the notification
+  await Notification.findByIdAndDelete(notificationId);
+
+  res.status(200).json({
+    success: true,
+    message: 'Notification deleted successfully',
+  });
+});
+
 module.exports = {
-  getNotifications,
+  getUserNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  getNotificationById,
+  deleteNotification,
 };
 

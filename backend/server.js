@@ -11,6 +11,7 @@ const emailPreviewRoute = require('./src/routes/emailPreviewRoute');
 // Custom imports
 const database = require('./src/config/database');
 const eventScheduler = require('./src/services/eventScheduler');
+const notificationScheduler = require('./src/jobs/notificationScheduler');
 
 // Check for required environment variables
 if (!process.env.MONGO_URI) {
@@ -99,6 +100,9 @@ const startServer = async () => {
 
         // Start event scheduler
         eventScheduler.start();
+        
+        // Start notification scheduler
+        notificationScheduler.start();
 
         // Then start the server
         app.listen(PORT, () => {

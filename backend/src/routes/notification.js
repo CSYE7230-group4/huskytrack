@@ -1,6 +1,6 @@
 /**
  * Notification Routes
- * Handles all notification-related endpoints
+ * Defines all routes for notification operations
  */
 
 const express = require('express');
@@ -8,33 +8,28 @@ const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { authenticate } = require('../middleware/auth');
 
-// All routes require authentication
+// All notification routes require authentication
 router.use(authenticate);
 
-/**
- * GET /api/v1/notifications/me
- * Get all notifications for authenticated user
- * Query params: isRead, type, page, limit
- */
-router.get('/me', notificationController.getNotifications);
-
-/**
- * GET /api/v1/notifications/unread/count
- * Get count of unread notifications
- */
+// Get unread count (must be before /:id routes)
 router.get('/unread/count', notificationController.getUnreadCount);
 
-/**
- * PATCH /api/v1/notifications/:id/read
- * Mark a notification as read
- */
-router.patch('/:id/read', notificationController.markAsRead);
+// Get user's notifications
+router.get('/me', notificationController.getUserNotifications);
 
-/**
- * PATCH /api/v1/notifications/read-all
- * Mark all notifications as read
- */
+// Mark all notifications as read
 router.patch('/read-all', notificationController.markAllAsRead);
 
+// Get notification by ID
+router.get('/:id', notificationController.getNotificationById);
+
+// Mark notification as read
+router.patch('/:id/read', notificationController.markAsRead);
+
+// Delete notification
+router.delete('/:id', notificationController.deleteNotification);
+
 module.exports = router;
+
+
 

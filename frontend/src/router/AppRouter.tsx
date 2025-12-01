@@ -11,6 +11,7 @@ import LandingPage from "../pages/LandingPage";
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
 import EventDetails from "../pages/EventDetails";
+import MyBookmarks from "../pages/MyBookmarks";
 import Profile from "../pages/Profile";
 import UiGuide from "../pages/UiGuide";
 
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
       { path: "events/create", element: <CreateEvent /> }, // Alias for backward compatibility
       { path: "events/:id", element: <EventDetails /> },
       { path: "events/:id/edit", element: <EditEvent /> },
+      { path: "bookmarks", element: <MyBookmarks /> },
 
       // PROFILE
       { path: "profile", element: <Profile /> },

@@ -204,8 +204,24 @@ const EventSchema = new mongoose.Schema({
 EventSchema.index({ startDate: 1, status: 1 }); // For upcoming events query
 EventSchema.index({ category: 1, status: 1 }); // For category filtering
 EventSchema.index({ organizer: 1, status: 1 }); // For user's events
-EventSchema.index({ title: 'text', description: 'text', tags: 'text' }); // Text search
+// Text search index with weights (title: 10, description: 5, tags: 3)
+EventSchema.index({ 
+  title: 'text', 
+  description: 'text', 
+  tags: 'text' 
+}, {
+  weights: {
+    title: 10,
+    description: 5,
+    tags: 3
+  },
+  name: 'text_search_index'
+}); 
 EventSchema.index({ 'location.city': 1, 'location.state': 1 }); // Location-based search
+EventSchema.index({ 'location.name': 1 }); // Venue name search
+EventSchema.index({ tags: 1 }); // Tag filtering
+EventSchema.index({ currentRegistrations: -1 }); // Popularity sorting
+EventSchema.index({ status: 1, startDate: 1, category: 1 }); // Compound index for common queries
 
 // Virtual property: Check if event is full
 EventSchema.virtual('isFull').get(function() {

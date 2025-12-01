@@ -6,6 +6,7 @@
 
 const eventRepository = require('../repositories/eventRepository');
 const { EventStatus } = require('../models/Event');
+const notificationService = require('./notificationService');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
 const {
@@ -264,28 +265,53 @@ class EventService {
     }
 
     try {
-  const updatedEvent = await eventRepository.update(eventId, updateData);
-
-    // === SEND EVENT UPDATE EMAIL ===
-    try {
-      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
-        status: 'REGISTERED'
-      });
-
-      for (const attendee of attendees.registrations) {
-        await sendEventUpdateEmail({
-          to: attendee.user.email,
-          userName: attendee.user.firstName,
-          eventName: updatedEvent.title,
-          eventDate: updatedEvent.startDate,
-          eventLocation: updatedEvent.location,
-          eventId: updatedEvent._id
-        });
+      const updatedEvent = await eventRepository.update(eventId, updateData);
+      
+      // Notify registered users about significant updates (if event is published)
+      if (event.status === EventStatus.PUBLISHED && event.currentRegistrations > 0) {
+        // Check if significant fields were updated
+        const significantFields = ['title', 'startDate', 'endDate', 'location'];
+        const hasSignificantChanges = significantFields.some(field => 
+          updateData[field] !== undefined && 
+          JSON.stringify(updateData[field]) !== JSON.stringify(event[field])
+        );
+        
+        if (hasSignificantChanges) {
+          // Trigger notification asynchronously (don't block on failure)
+          this.notifyEventUpdate(eventId, updateData)
+            .catch(err => console.error('Failed to send event update notifications:', err));
+        }
+      }
+      
+      return updatedEvent;
+    } catch (error) {
+      if (error.name === 'ValidationError') {
+        throw new ValidationError(this.formatMongooseErrors(error));
       }
     } catch (emailErr) {
       console.error("Event update email failed:", emailErr);
     }
-    // === END EMAIL ===
+  }
+  
+  /**
+   * Helper method to notify users about event updates
+   * @param {String} eventId - Event ID
+   * @param {Object} updateData - Updated fields
+   */
+  async notifyEventUpdate(eventId, updateData) {
+    try {
+      const changes = [];
+      if (updateData.title) changes.push('Event title updated');
+      if (updateData.startDate) changes.push('Start time changed');
+      if (updateData.endDate) changes.push('End time changed');
+      if (updateData.location) changes.push('Location changed');
+      
+      const changeDescription = changes.join(', ');
+      await notificationService.notifyEventUpdate(eventId, changeDescription);
+    } catch (error) {
+      console.error('Error notifying event update:', error);
+    }
+  }
 
     return updatedEvent;
 
@@ -388,32 +414,15 @@ class EventService {
       throw new ValidationError('Event is already cancelled');
     }
 
-    // TODO: Trigger notifications to registered users
     const cancelledEvent = await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
-
-    // === SEND EVENT CANCELLATION EMAIL ===
-    try {
-      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
-        status: 'REGISTERED'
-      });
-
-      for (const attendee of attendees.registrations) {
-        await sendEventCancellationEmail({
-          to: attendee.user.email,
-          userName: attendee.user.firstName,
-          eventName: cancelledEvent.title,
-          eventDate: cancelledEvent.startDate,
-          eventLocation: cancelledEvent.location,
-          eventId: cancelledEvent._id
-        });
-      }
-    } catch (emailErr) {
-      console.error("Event cancellation email failed:", emailErr);
+    
+    // Trigger notifications to registered users (don't block on failure)
+    if (event.currentRegistrations > 0) {
+      notificationService.notifyEventCancellation(eventId)
+        .catch(err => console.error('Failed to send event cancellation notifications:', err));
     }
-    // === END EMAIL ===
-
+    
     return cancelledEvent;
-
   }
 
   /**

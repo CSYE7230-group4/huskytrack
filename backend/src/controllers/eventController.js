@@ -3,6 +3,7 @@
  * Handles HTTP requests for event operations
  */
 
+const eventSearchService = require('../services/eventSearch');
 const eventService = require('../services/eventService');
 const { asyncHandler } = require('../utils/errors');
 const mongoose = require('mongoose');
@@ -76,38 +77,57 @@ const createEvent = asyncHandler(async (req, res) => {
  */
 const getEvents = asyncHandler(async (req, res) => {
     const {
-        page = 1,
-        limit = 20,
+        page,
+        limit,
+        offset,
         category,
         status,
         search,
+        searchQuery,
         startDate,
         endDate,
+        tags,
+        location,
+        capacity,
+        includePast,
         isPublic,
-        sort = 'startDate'
+        sort,
+        sortOrder
     } = req.query;
 
-    const filters = {};
-    if (category) filters.category = category;
-    if (status) filters.status = status;
-    if (isPublic !== undefined) filters.isPublic = isPublic === 'true';
-    if (startDate) filters.startDate = { $gte: new Date(startDate) };
-    if (endDate) filters.endDate = { $lte: new Date(endDate) };
+    // Determine if user can see drafts (organizer/admin)
+    const userId = req.user?.id;
+    const isOrganizerOrAdmin = req.user?.role === 'ORGANIZER' || req.user?.role === 'ADMIN';
+    const includeDrafts = isOrganizerOrAdmin && req.query.includeDrafts === 'true';
 
-    const sortObj = {};
-    if (sort.startsWith('-')) {
-        sortObj[sort.substring(1)] = -1;
-    } else {
-        sortObj[sort] = 1;
-    }
-
-    const options = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        sort: sortObj
+    // Use advanced search service for better functionality
+    const searchOptions = {
+        searchQuery: searchQuery || search, // Support both parameter names
+        category,
+        status,
+        startDate,
+        endDate,
+        tags,
+        location,
+        capacity,
+        includePast: includePast === 'true' || includePast === true,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+        sort,
+        sortOrder,
+        userId,
+        includeDrafts
     };
 
-    const result = await eventService.getEvents(filters, options, req.user?.id);
+    // Remove undefined values
+    Object.keys(searchOptions).forEach(key => {
+        if (searchOptions[key] === undefined) {
+            delete searchOptions[key];
+        }
+    });
+
+    const result = await eventSearchService.searchEvents(searchOptions);
 
     res.status(200).json({
         success: true,
@@ -540,27 +560,58 @@ const cancelEvent = asyncHandler(async (req, res) => {
 const searchEvents = asyncHandler(async (req, res) => {
     const {
         q,
-        page = 1,
-        limit = 20,
+        searchQuery,
+        page,
+        limit,
+        offset,
         category,
+        status,
         startDate,
         endDate,
-        sort = 'relevance'
+        tags,
+        location,
+        capacity,
+        includePast,
+        sort = 'relevance',
+        sortOrder
     } = req.query;
 
-    const filters = {};
-    if (category) filters.category = category;
+    // Determine if user can see drafts (organizer/admin)
+    const userId = req.user?.id;
+    const isOrganizerOrAdmin = req.user?.role === 'ORGANIZER' || req.user?.role === 'ADMIN';
+    const includeDrafts = isOrganizerOrAdmin && req.query.includeDrafts === 'true';
 
-    if (startDate) filters.startDate = { $gte: new Date(startDate) };
-    if (endDate) filters.endDate = { $lte: new Date(endDate) };
+    // Use searchQuery or q (backward compatibility)
+    const query = searchQuery || q;
 
-    const options = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        sort
+    // If no search query provided, return all published events (filtering only)
+    const searchOptions = {
+        searchQuery: query,
+        category,
+        status,
+        startDate,
+        endDate,
+        tags,
+        location,
+        capacity,
+        includePast: includePast === 'true' || includePast === true,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+        sort,
+        sortOrder,
+        userId,
+        includeDrafts
     };
 
-    const result = await eventService.searchEvents(q, filters, options);
+    // Remove undefined values
+    Object.keys(searchOptions).forEach(key => {
+        if (searchOptions[key] === undefined) {
+            delete searchOptions[key];
+        }
+    });
+
+    const result = await eventSearchService.searchEvents(searchOptions);
 
     res.status(200).json({
         success: true,

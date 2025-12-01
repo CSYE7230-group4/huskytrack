@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Users } from "lucide-react";
+import { Calendar, MapPin, Users, ThumbsUp } from "lucide-react";
+import BookmarkButton from "./BookmarkButton";
+import { useLike } from "../../hooks/useLike";
 
 export type EventStatus = "PUBLISHED" | "CANCELLED" | "DRAFT" | string;
 
@@ -62,9 +64,11 @@ function formatDateRange(start?: string, end?: string) {
 export default function EventCard({
   event,
   variant = "grid",
+  showBookmark = true,
 }: {
   event: EventDto;
   variant?: "grid" | "list";
+  showBookmark?: boolean;
 }) {
   const image =
     event.bannerImageUrl || event.imageUrl || "/placeholder-event.png";
@@ -92,28 +96,51 @@ export default function EventCard({
     statusStyles[status] || "bg-gray-50 text-gray-700 border-gray-200";
   const statusText = statusLabel[status] || status;
 
+  // Check if event is completed/past
+  const now = new Date();
+  const endDate = event.endDate ? new Date(event.endDate) : null;
+  const isPast = endDate ? endDate < now : false;
+  
+  // Get like count for past events (always call hook, but only auto-check if past)
+  const { likeCount } = useLike(event._id || undefined, { autoCheck: isPast && !!event._id });
+
   return (
-    <Link
-      to={`/app/events/${event._id}`}
-      tabIndex={0}
-      aria-label={`Open details for ${event.title}`}
-      className={`block rounded-xl border border-gray-200 bg-white shadow-soft hover-lift animate-scaleIn
-        ${variant === "list" ? "sm:flex sm:items-stretch" : ""}`}
-    >
-      {/* Image */}
-      <div
-        className={
-          variant === "list"
-            ? "h-40 w-full overflow-hidden rounded-t-xl sm:h-auto sm:w-48 sm:rounded-l-xl sm:rounded-tr-none"
-            : "h-44 w-full overflow-hidden rounded-t-xl"
-        }
+    <div className={`relative rounded-xl border border-gray-200 bg-white shadow-soft hover-lift animate-scaleIn
+        ${variant === "list" ? "sm:flex sm:items-stretch" : ""}`}>
+      {/* Bookmark Button - positioned absolutely */}
+      {showBookmark && event._id && (
+        <div className="absolute top-3 right-3 z-10">
+          <BookmarkButton
+            eventId={event._id}
+            size="md"
+            showCount={false}
+            onToggle={(bookmarked, count) => {
+              // Optional: Update local state if needed
+            }}
+          />
+        </div>
+      )}
+
+      <Link
+        to={`/app/events/${event._id}`}
+        tabIndex={0}
+        aria-label={`Open details for ${event.title}`}
+        className="block"
       >
-        <img
-          src={image}
-          alt={`Event: ${event.title}`}
-          className="h-full w-full object-cover"
-        />
-      </div>
+        {/* Image */}
+        <div
+          className={
+            variant === "list"
+              ? "h-40 w-full overflow-hidden rounded-t-xl sm:h-auto sm:w-48 sm:rounded-l-xl sm:rounded-tr-none"
+              : "h-44 w-full overflow-hidden rounded-t-xl"
+          }
+        >
+          <img
+            src={image}
+            alt={`Event: ${event.title}`}
+            className="h-full w-full object-cover"
+          />
+        </div>
 
       {/* Content */}
       <div
@@ -175,22 +202,32 @@ export default function EventCard({
         )}
 
         <div className="flex items-center justify-between gap-2 pt-1">
-          {/* Capacity */}
-          {hasCapacity && (
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium
-                ${
-                  isFull
-                    ? "bg-gray-100 text-gray-600"
-                    : "bg-green-50 text-green-700"
-                }`}
-            >
-              <Users className="h-3.5 w-3.5 mr-1" />
-              {isFull
-                ? "No spots left"
-                : `${spotsRemaining} / ${max} spots remaining`}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Capacity */}
+            {hasCapacity && !isPast && (
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium
+                  ${
+                    isFull
+                      ? "bg-gray-100 text-gray-600"
+                      : "bg-green-50 text-green-700"
+                  }`}
+              >
+                <Users className="h-3.5 w-3.5 mr-1" />
+                {isFull
+                  ? "No spots left"
+                  : `${spotsRemaining} / ${max} spots remaining`}
+              </span>
+            )}
+
+            {/* Like Count for Past Events */}
+            {isPast && likeCount > 0 && (
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-blue-50 text-blue-700">
+                <ThumbsUp className="h-3.5 w-3.5 mr-1" />
+                {likeCount} {likeCount === 1 ? "like" : "likes"}
+              </span>
+            )}
+          </div>
 
           {/* Tags (short) */}
           {event.tags && event.tags.length > 0 && (
@@ -207,6 +244,7 @@ export default function EventCard({
           )}
         </div>
       </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
