@@ -181,7 +181,7 @@ export function useNotifications(
         }
       } catch (err: any) {
         // Ignore abort errors
-        if (err?.name === 'AbortError' || abortController.signal.aborted) {
+        if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED' || abortController.signal.aborted) {
           return;
         }
         const errorMessage = err?.message || "Failed to fetch notifications";
@@ -232,7 +232,7 @@ export function useNotifications(
       setUnreadCount(count);
       } catch (err: any) {
         // Ignore canceled/aborted errors - these are expected when requests are superseded
-        if (err.name === 'AbortError' || err.message === 'canceled') {
+        if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message === 'canceled') {
           return;
         }
         console.error("[Notifications Hook] Error fetching unread count:", err);
@@ -417,7 +417,7 @@ export function useNotifications(
           if (isOpen && !isRefreshingRef.current) {
             fetchNotifications({ page: 1, limit }, false).catch(err => {
               // Only log non-canceled errors
-              if (err.name !== 'AbortError' && err.message !== 'canceled') {
+              if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED' && err.message !== 'canceled') {
                 console.error('Error refreshing notifications during poll:', err);
               }
             });
@@ -425,7 +425,7 @@ export function useNotifications(
         })
         .catch(err => {
           // Only log non-canceled errors
-          if (err.name !== 'AbortError' && err.message !== 'canceled') {
+          if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED' && err.message !== 'canceled') {
             console.error('Error fetching unread count during poll:', err);
           }
         });
@@ -467,7 +467,7 @@ export function useNotifications(
           })
           .catch(err => {
             // Don't log canceled errors as they're expected
-            if (err?.name !== 'AbortError' && err?.message !== 'canceled') {
+            if (err?.name !== 'AbortError' && err?.code !== 'ERR_CANCELED' && err?.message !== 'canceled') {
               console.error('[Notifications] Error fetching on open:', err);
               setError(err?.message || 'Failed to fetch notifications');
             }
@@ -479,7 +479,7 @@ export function useNotifications(
         // Also refresh unread count (but don't block on it)
         fetchUnreadCount().catch(err => {
           // Don't log canceled errors
-          if (err?.name !== 'AbortError' && err?.message !== 'canceled') {
+          if (err?.name !== 'AbortError' && err?.code !== 'ERR_CANCELED' && err?.message !== 'canceled') {
             console.error('[Notifications] Error fetching unread count on open:', err);
           }
         });

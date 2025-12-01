@@ -99,11 +99,14 @@ export async function getOrganizerDashboardData(): Promise<{
   // For now, derive basic stats from organizer's own events and skip recent registrations
   const events = await getOrganizerEvents({});
 
-  const totalEvents = events.length;
-  const upcomingEvents = events.filter(
+  // Filter out cancelled events for stats calculations
+  const activeEvents = events.filter((e) => e.status !== "cancelled");
+  
+  const totalEvents = activeEvents.length;
+  const upcomingEvents = activeEvents.filter(
     (e) => new Date(e.startDateTime) > new Date()
   );
-  const totalAttendees = events.reduce(
+  const totalAttendees = activeEvents.reduce(
     (sum, e) => sum + e.registrationsCount,
     0
   );
@@ -113,14 +116,14 @@ export async function getOrganizerDashboardData(): Promise<{
     totalAttendees,
     upcomingEventsCount: upcomingEvents.length,
     averageFillRate:
-      events.length > 0
+      activeEvents.length > 0
         ? Math.round(
-            (events.reduce((sum, e) => {
+            (activeEvents.reduce((sum, e) => {
               if (e.capacity > 0) {
                 return sum + e.registrationsCount / e.capacity;
               }
               return sum;
-            }, 0) / events.length) *
+            }, 0) / activeEvents.length) *
               100
           )
         : 0,

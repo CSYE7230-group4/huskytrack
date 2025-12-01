@@ -114,7 +114,12 @@ export async function getUnreadCount(signal?: AbortSignal): Promise<number> {
     return count;
   } catch (err: any) {
     // Ignore canceled/aborted requests - these are expected
-    if (err.name === 'AbortError' || err.message === 'canceled' || (err.response && err.response.status === 499)) {
+    if (
+      err.name === 'AbortError' || 
+      err.code === 'ERR_CANCELED' ||
+      err.message === 'canceled' || 
+      (err.response && err.response.status === 499)
+    ) {
       // Re-throw but don't log as error - this is expected behavior
       throw err;
     }

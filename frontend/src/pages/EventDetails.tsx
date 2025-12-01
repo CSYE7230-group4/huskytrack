@@ -119,7 +119,6 @@ export default function EventDetails() {
   const isCompleted = endDate ? endDate <= now : false;
   const isPast = endDate ? endDate < now : false;
 
-<<<<<<< HEAD
   return (
     <div className="px-6 py-10 max-w-4xl mx-auto mt-6 space-y-6">
       {/* Back Button */}
@@ -167,12 +166,22 @@ export default function EventDetails() {
               <span>{formatDateRange(event.startDate, event.endDate)}</span>
             </div>
           )}
-          {event.location && (
-            <div className="inline-flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              <span>{event.location}</span>
-            </div>
-          )}
+          {event.location && (() => {
+            const locationText =
+              typeof event.location === "string"
+                ? event.location
+                : event.location.name ||
+                  event.location.address ||
+                  event.location.city ||
+                  (event.location.isVirtual ? "Online event" : "");
+            if (!locationText) return null;
+            return (
+              <div className="inline-flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span>{locationText}</span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Capacity */}

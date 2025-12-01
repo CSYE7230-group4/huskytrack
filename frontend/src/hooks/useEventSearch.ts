@@ -60,21 +60,21 @@ const DEFAULT_PAGE_SIZE = 9;
 const DEFAULT_DEBOUNCE_DELAY = 300;
 
 // Map frontend sort options to backend sort parameters
-// Note: 'relevance' is only valid for search queries, use 'startDate' as fallback
+// Note: 'relevance' is only valid for search queries, use 'date' as fallback
 const mapSortToBackend = (sort: SortOption, hasSearchQuery: boolean = false): string => {
   switch (sort) {
     case 'date':
     case 'startDate':
-      return 'startDate';
+      return 'date';
     case 'popularity':
       return 'popularity';
     case 'capacity':
-      return 'currentRegistrations';
+      return 'capacity';
     case 'relevance':
-      // Only use 'relevance' if there's a search query, otherwise use 'startDate'
-      return hasSearchQuery ? 'relevance' : 'startDate';
+      // Only use 'relevance' if there's a search query, otherwise use 'date'
+      return hasSearchQuery ? 'relevance' : 'date';
     default:
-      return hasSearchQuery ? 'relevance' : 'startDate';
+      return hasSearchQuery ? 'relevance' : 'date';
   }
 };
 

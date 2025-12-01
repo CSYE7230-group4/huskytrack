@@ -288,8 +288,7 @@ class EventService {
       if (error.name === 'ValidationError') {
         throw new ValidationError(this.formatMongooseErrors(error));
       }
-    } catch (emailErr) {
-      console.error("Event update email failed:", emailErr);
+      throw error;
     }
   }
   
@@ -313,17 +312,6 @@ class EventService {
     }
   }
 
-    return updatedEvent;
-
-     } catch (error) {
-    {
-          if (error.name === 'ValidationError') {
-            throw new ValidationError(this.formatMongooseErrors(error));
-          }
-          throw error;
-        }
-      }
-    }
   /**
    * Delete event
    * @param {String} eventId - Event ID
