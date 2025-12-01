@@ -89,32 +89,15 @@ export default function Login() {
             <input type="checkbox" id="remember" className="rounded border-gray-300" />
             <label htmlFor="remember">Remember me</label>
           </div>
-
-          <Button
-            type="submit"
-            className="w-full mt-4"
-            isLoading={isLoading}
-          >
-            Log in
-          </Button>
-        </form>
-
-        <p className="mt-6 text-xs text-center text-gray-500">
-          New user?{" "}
-          <Link to="/auth/register" className="text-primary font-medium hover:underline">
-            Sign up
-          </Link>
         </div>
 
-        <Button type="submit" className="w-full mt-4" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <Spinner />
-              Logging in...
-            </span>
-          ) : (
-            "Log in"
-          )}
+        <Button
+          type="submit"
+          className="w-full mt-4"
+          disabled={isSubmitting}
+          isLoading={isSubmitting}
+        >
+          {isSubmitting ? "Logging in..." : "Log in"}
         </Button>
       </form>
 

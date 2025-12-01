@@ -5,12 +5,23 @@ import { useLike } from "../../hooks/useLike";
 
 export type EventStatus = "PUBLISHED" | "CANCELLED" | "DRAFT" | string;
 
+type EventLocation =
+  | string
+  | {
+      name?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      isVirtual?: boolean;
+    };
+
 export interface EventDto {
   _id?: string;
   title: string;
   category?: string;
   status?: EventStatus;
-  location?: string;
+  location?: EventLocation;
   startDate?: string; // ISO string
   endDate?: string;
   description?: string;
@@ -161,12 +172,23 @@ export default function EventCard({
               <span>{formatDateRange(event.startDate, event.endDate)}</span>
             </div>
           )}
-          {event.location && (
+          {event.location && (() => {
+            const loc =
+              typeof event.location === "string"
+                ? event.location
+                : event.location.name ||
+                  event.location.city ||
+                  event.location.address ||
+                  event.location.country ||
+                  (event.location.isVirtual ? "Online event" : "");
+            if (!loc) return null;
+            return (
             <div className="inline-flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />
-              <span className="line-clamp-1">{event.location}</span>
+              <span className="line-clamp-1">{loc}</span>
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {event.description && (
@@ -210,9 +232,9 @@ export default function EventCard({
           {/* Tags (short) */}
           {event.tags && event.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 ml-auto justify-end">
-              {event.tags.slice(0, variant === "grid" ? 2 : 4).map((tag) => (
+              {event.tags.slice(0, variant === "grid" ? 2 : 4).map((tag, idx) => (
                 <span
-                  key={tag}
+                  key={`${tag}-${idx}`}
                   className="rounded-full bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
                 >
                   #{tag}

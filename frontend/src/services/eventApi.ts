@@ -10,18 +10,23 @@ import { EventDto } from '../components/ui/EventCard';
  * Map frontend category names to backend category enum values
  * Frontend uses: Workshop, Seminar, Cultural, Sports, Networking
  * Backend expects: Academic, Career, Clubs, Sports, Social, Cultural, Other
+ *
+ * We map:
+ * - Seminar -> Academic
+ * - Workshop -> Career
+ * so a seminar event only appears under the Seminar filter, not both.
  */
 const mapCategoryToBackend = (category: string): string => {
   if (!category) return category;
-  
+
   const categoryMap: Record<string, string> = {
-    'Workshop': 'Academic',
-    'Seminar': 'Academic',
-    'Cultural': 'Cultural',
-    'Sports': 'Sports',
-    'Networking': 'Social',
+    Workshop: "Career",
+    Seminar: "Academic",
+    Cultural: "Cultural",
+    Sports: "Sports",
+    Networking: "Social",
   };
-  
+
   // Return mapped value or original if no mapping exists
   return categoryMap[category] || category;
 };

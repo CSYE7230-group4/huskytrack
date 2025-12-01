@@ -49,7 +49,7 @@ export default function Button({
     lg: "px-5 py-3 text-base",
   };
 
-  const isButtonDisabled = disabled || isLoading;
+  const isButtonDisabled = props.disabled || isLoading;
   const disabledClasses = isButtonDisabled
     ? "opacity-50 cursor-not-allowed pointer-events-none"
     : "";
