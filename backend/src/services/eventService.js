@@ -151,9 +151,9 @@ class EventService {
    * @returns {Promise<Object>} Draft events and metadata
    */
   async getDraftEventsByOrganizer(organizerId, options = {}) {
-    const filters = { 
-      organizer: organizerId, 
-      status: EventStatus.DRAFT 
+    const filters = {
+      organizer: organizerId,
+      status: EventStatus.DRAFT
     };
     
     return await eventRepository.findAll(filters, {
@@ -251,8 +251,8 @@ class EventService {
 
     // Cannot change capacity if it would be less than current registrations
     if (updateData.maxRegistrations !== undefined) {
-      if (updateData.maxRegistrations !== null && 
-          updateData.maxRegistrations < event.currentRegistrations) {
+      if (updateData.maxRegistrations !== null &&
+        updateData.maxRegistrations < event.currentRegistrations) {
         throw new ValidationError(
           `Cannot set capacity to ${updateData.maxRegistrations} when ${event.currentRegistrations} users are already registered`
         );
@@ -271,8 +271,8 @@ class EventService {
       if (event.status === EventStatus.PUBLISHED && event.currentRegistrations > 0) {
         // Check if significant fields were updated
         const significantFields = ['title', 'startDate', 'endDate', 'location'];
-        const hasSignificantChanges = significantFields.some(field => 
-          updateData[field] !== undefined && 
+        const hasSignificantChanges = significantFields.some(field =>
+          updateData[field] !== undefined &&
           JSON.stringify(updateData[field]) !== JSON.stringify(event[field])
         );
         
