@@ -212,7 +212,7 @@ const deleteImageByFilename = async (req, res, next) => {
       imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${filename}`;
     } else {
       // Construct local URL
-      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
       imageUrl = `${baseUrl}/uploads/images/${filename}`;
     }
 
