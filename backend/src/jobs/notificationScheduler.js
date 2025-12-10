@@ -147,7 +147,7 @@ class NotificationScheduler {
 
       if (shouldSendReminder && !this.processedReminders.has(reminderKey)) {
         try {
-          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
           
           await notificationService.createNotification({
             userId: user._id,

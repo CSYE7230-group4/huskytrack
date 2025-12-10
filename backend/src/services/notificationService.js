@@ -307,7 +307,7 @@ class NotificationService {
     }).populate('user');
 
     const notifications = [];
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     for (const registration of registrations) {
       const user = registration.user;
@@ -361,7 +361,7 @@ class NotificationService {
       status: { $in: [RegistrationStatus.REGISTERED, RegistrationStatus.WAITLISTED] }
     }).populate('user');
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const notificationData = registrations.map(reg => ({
       userId: reg.user._id,
       type: NotificationType.EVENT_UPDATED,
@@ -432,7 +432,7 @@ class NotificationService {
       return null;
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const commentPreview = commentText.length > 100 
       ? commentText.substring(0, 100) + '...' 
       : commentText;

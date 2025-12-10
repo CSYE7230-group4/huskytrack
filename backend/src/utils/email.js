@@ -20,7 +20,7 @@ if (process.env.SENDGRID_API_KEY) {
 const EMAIL_CONFIG = {
     from: process.env.EMAIL_FROM || 'support@huskytracks.site',
     replyTo: process.env.EMAIL_REPLY_TO || 'support@huskytracks.site',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
 };
 
 /**
