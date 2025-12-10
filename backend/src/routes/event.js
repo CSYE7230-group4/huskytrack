@@ -13,6 +13,11 @@ const {
   validateGetEvents,
   validateSearchEvents
 } = require('../middleware/eventValidation');
+const { getUploadMiddleware } = require('../config/multer');
+const { parseFormDataFields } = require('../middleware/parseFormData');
+
+// Get appropriate upload middleware based on storage type
+const upload = getUploadMiddleware();
 
 // Public routes (no authentication required)
 
@@ -32,6 +37,8 @@ router.post(
   '/',
   authenticate,
   authorize('ORGANIZER', 'ADMIN'),
+  upload.single('image'), // Handle optional image upload
+  parseFormDataFields, // Parse JSON fields from FormData
   validateCreateEvent,
   eventController.createEvent
 );
@@ -89,6 +96,8 @@ router.put(
   '/:id',
   authenticate,
   authorize('ORGANIZER', 'ADMIN'),
+  upload.single('image'), // Handle optional image upload
+  parseFormDataFields, // Parse JSON fields from FormData
   validateUpdateEvent,
   eventController.updateEvent
 );
