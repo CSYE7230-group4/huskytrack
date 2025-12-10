@@ -12,7 +12,7 @@ const { Notification, NotificationType } = require('../models/Notification');
 const mongoose = require('mongoose');
 
 const {
-  sendRegistrationConfirmationEmail: sendEmailHelper,
+  sendRegistrationConfirmationEmail,
   sendEventCancellationEmail
 } = require('../services/notificationService');
 
@@ -97,7 +97,10 @@ class RegistrationService {
 
         // Trigger notification (don't block on failure)
         this.sendRegistrationConfirmationNotification(userId, eventId, registration._id)
-          .catch(err => console.error('Notification error:', err));
+          .catch(err => {
+            console.error('[Registration] Notification error in registerForEvent:', err.message);
+            console.error('[Registration] Full error:', err);
+          });
 
         // Send email confirmation (do not block if fails)
         try {
@@ -105,7 +108,7 @@ class RegistrationService {
             populate: ['event', 'user']
           });
 
-          await sendEmailHelper({
+          await sendRegistrationConfirmationEmail({
             to: fullRegistration.user.email,
             userName: fullRegistration.user.firstName,
             eventName: fullRegistration.event.title,
@@ -124,7 +127,7 @@ class RegistrationService {
             populate: ['event', 'user']
           });
 
-          await sendEmailHelper({
+          await sendRegistrationConfirmationEmail({
             to: populated.user.email,
             userName: populated.user.firstName,
             eventName: populated.event.title,
@@ -172,7 +175,10 @@ class RegistrationService {
 
         // Trigger waitlist notification
         this.sendWaitlistNotification(userId, eventId, registration._id, waitlistPosition)
-          .catch(err => console.error('Notification error:', err));
+          .catch(err => {
+            console.error('[Registration] Waitlist notification error in registerForEvent:', err.message);
+            console.error('[Registration] Full error:', err);
+          });
 
         return {
           success: true,
@@ -583,88 +589,166 @@ class RegistrationService {
 
   async sendRegistrationConfirmationNotification(userId, eventId, registrationId) {
     try {
+      // Ensure userId is properly formatted
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+      
       const event = await Event.findById(eventId).select('title startDate').lean();
       
-      await Notification.create({
-        user: userId,
+      if (!event) {
+        console.error(`[Registration] Event not found: ${eventId}`);
+        return;
+      }
+      
+      console.log(`[Registration] Creating notification for user ${userIdObj.toString()}, event: ${eventId}`);
+      
+      const notification = await Notification.create({
+        user: userIdObj,
         type: NotificationType.REGISTRATION_CONFIRMED,
         title: 'Registration Confirmed',
         message: `You have successfully registered for "${event.title}"`,
         event: eventId,
         registration: registrationId,
-        actionUrl: `/events/${eventId}`,
+        actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          eventDate: event.startDate
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
+      console.log(`[Registration] ✓ Created notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
     } catch (error) {
-      console.error('Error sending confirmation notification:', error);
+      console.error('[Registration] ✗ Error sending confirmation notification:', error.message);
+      console.error('[Registration] Error details:', error);
+      if (error.errors) {
+        console.error('[Registration] Validation errors:', error.errors);
+      }
     }
   }
 
   async sendWaitlistNotification(userId, eventId, registrationId, position) {
     try {
+      // Ensure userId is properly formatted
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+      
       const event = await Event.findById(eventId).select('title startDate').lean();
       
-      await Notification.create({
-        user: userId,
+      if (!event) {
+        console.error(`[Registration] Event not found for waitlist: ${eventId}`);
+        return;
+      }
+      
+      console.log(`[Registration] Creating waitlist notification for user ${userIdObj.toString()}, event: ${eventId}`);
+      
+      const notification = await Notification.create({
+        user: userIdObj,
         type: NotificationType.REGISTRATION_WAITLISTED,
         title: 'Added to Waitlist',
         message: `You are #${position} on the waitlist for "${event.title}"`,
         event: eventId,
         registration: registrationId,
-        actionUrl: `/events/${eventId}`,
+        actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          waitlistPosition: position
+          startDate: event.startDate,
+          location: event.location,
+          waitlistPosition: position,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
+      console.log(`[Registration] ✓ Created waitlist notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
     } catch (error) {
-      console.error('Error sending waitlist notification:', error);
+      console.error('[Registration] ✗ Error sending waitlist notification:', error.message);
+      console.error('[Registration] Error details:', error);
+      if (error.errors) {
+        console.error('[Registration] Validation errors:', error.errors);
+      }
     }
   }
 
   async sendWaitlistPromotionNotification(userId, eventId, registrationId) {
     try {
+      // Ensure userId is properly formatted
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+      
       const event = await Event.findById(eventId).select('title startDate').lean();
       
-      await Notification.create({
-        user: userId,
+      if (!event) {
+        console.error(`[Registration] Event not found for waitlist promotion: ${eventId}`);
+        return;
+      }
+      
+      console.log(`[Registration] Creating waitlist promotion notification for user ${userIdObj.toString()}, event: ${eventId}`);
+      
+      const notification = await Notification.create({
+        user: userIdObj,
         type: NotificationType.REGISTRATION_APPROVED,
         title: 'Promoted from Waitlist',
         message: `A spot opened up! You are now registered for "${event.title}"`,
         event: eventId,
         registration: registrationId,
-        actionUrl: `/events/${eventId}`,
+        actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
-          promotedFrom: 'waitlist'
+          startDate: event.startDate,
+          location: event.location,
+          eventUrl: `${frontendUrl}/events/${eventId}`,
+          registrationId
         }
       });
+      console.log(`[Registration] ✓ Created waitlist promotion notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
     } catch (error) {
-      console.error('Error sending promotion notification:', error);
+      console.error('[Registration] ✗ Error sending promotion notification:', error.message);
+      console.error('[Registration] Error details:', error);
+      if (error.errors) {
+        console.error('[Registration] Validation errors:', error.errors);
+      }
     }
   }
 
   async sendCancellationNotification(userId, eventId) {
     try {
+      // Ensure userId is properly formatted
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+      
       const event = await Event.findById(eventId).select('title').lean();
       
-      await Notification.create({
-        user: userId,
+      if (!event) {
+        console.error(`[Registration] Event not found for cancellation: ${eventId}`);
+        return;
+      }
+      
+      console.log(`[Registration] Creating cancellation notification for user ${userIdObj.toString()}, event: ${eventId}`);
+      
+      const notification = await Notification.create({
+        user: userIdObj,
         type: NotificationType.EVENT_CANCELLED,
         title: 'Registration Cancelled',
         message: `Your registration for "${event.title}" has been cancelled`,
         event: eventId,
-        actionUrl: `/events/${eventId}`,
+        actionUrl: `/app/events/${eventId}`,
         metadata: {
           eventTitle: event.title,
           cancellationType: 'user_initiated'
         }
       });
+      console.log(`[Registration] ✓ Created cancellation notification for user ${userIdObj.toString()}, notification ID: ${notification._id}`);
     } catch (error) {
-      console.error('Error sending cancellation notification:', error);
+      console.error('[Registration] ✗ Error sending cancellation notification:', error.message);
+      console.error('[Registration] Error details:', error);
+      if (error.errors) {
+        console.error('[Registration] Validation errors:', error.errors);
+      }
     }
   }
 }
