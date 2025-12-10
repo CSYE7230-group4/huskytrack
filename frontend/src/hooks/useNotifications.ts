@@ -17,8 +17,11 @@ import {
 } from "../api/notifications";
 import { useToast } from "./useToast";
 
-const POLLING_INTERVAL = 60000; // 60 seconds (reduced frequency to improve performance)
+const POLLING_INTERVAL = 2000; // 2 seconds (reduced frequency to improve performance)
 const DEFAULT_LIMIT = 50; // Increased to show more notifications
+const INITIAL_FETCH_DELAY = 150; // Delay before initial fetch to ensure auth is ready
+const RETRY_DELAY = 2000; // 2 seconds between retries
+const MAX_RETRIES = 3; // Maximum number of retry attempts
 
 interface UseNotificationsOptions {
   autoFetch?: boolean;
@@ -77,6 +80,8 @@ export function useNotifications(
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fetchingRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { error: showErrorToast } = useToast();
 
   /**
@@ -356,37 +361,93 @@ export function useNotifications(
   const refreshNotifications = useCallback(async () => {
     console.log('[Notifications Hook] refreshNotifications called');
     setPagination(null);
+    setError(null); // Clear any existing errors
+    
     try {
       // Fetch all notifications (read and unread) - don't filter by isRead
-      // fetchNotifications sets state internally, so we don't need to capture the return value
       await Promise.all([
         fetchNotifications({ page: 1, limit }), // No isRead filter = get all
         fetchUnreadCount()
       ]);
       console.log('[Notifications Hook] refreshNotifications completed successfully');
-    } catch (err) {
+    } catch (err: any) {
+      // Ignore abort errors
+      if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED' || err?.message === 'canceled') {
+        console.log('[Notifications Hook] Refresh was aborted');
+        return; // Don't throw for canceled requests
+      }
+      
       console.error('[Notifications Hook] Error in refreshNotifications:', err);
-      throw err;
+      const errorMessage = err?.message || 'Failed to refresh notifications';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, [fetchNotifications, fetchUnreadCount, limit]);
 
   /**
    * Initialize: fetch notifications and unread count (only once on mount)
+   * Includes delay for auth stabilization and retry logic for failures
    */
   const hasInitializedRef = useRef(false);
   useEffect(() => {
-    if (autoFetch && !hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      // Fetch ALL notifications (read and unread) on mount - no filters
-      console.log('[Notifications Hook] Initial fetch - getting ALL notifications (read and unread)');
-      Promise.all([
-        fetchNotifications({ page: 1, limit }), // Explicitly pass empty filters to get all
-        fetchUnreadCount()
-      ]);
+    if (!autoFetch || hasInitializedRef.current) {
+      return;
     }
     
-    // Cleanup: cancel any in-flight requests on unmount
+    hasInitializedRef.current = true;
+    
+    // Helper function to perform the initial fetch with retry logic
+    const performInitialFetch = async (attemptNumber: number = 1) => {
+      try {
+        console.log(`[Notifications Hook] Initial fetch attempt ${attemptNumber}/${MAX_RETRIES + 1} - getting ALL notifications`);
+        
+        // Fetch notifications and unread count in parallel
+        await Promise.all([
+          fetchNotifications({ page: 1, limit }),
+          fetchUnreadCount()
+        ]);
+        
+        console.log('[Notifications Hook] Initial fetch successful');
+        retryCountRef.current = 0; // Reset retry count on success
+        
+      } catch (err: any) {
+        // Ignore abort errors
+        if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') {
+          console.log('[Notifications Hook] Initial fetch aborted');
+          return;
+        }
+        
+        console.error(`[Notifications Hook] Initial fetch attempt ${attemptNumber} failed:`, err);
+        
+        // Retry logic: if we haven't exceeded max retries, try again
+        if (attemptNumber <= MAX_RETRIES) {
+          console.log(`[Notifications Hook] Retrying in ${RETRY_DELAY}ms... (attempt ${attemptNumber + 1}/${MAX_RETRIES + 1})`);
+          retryCountRef.current = attemptNumber;
+          
+          retryTimeoutRef.current = setTimeout(() => {
+            performInitialFetch(attemptNumber + 1);
+          }, RETRY_DELAY);
+        } else {
+          console.error('[Notifications Hook] Max retries exceeded for initial fetch');
+          // Don't show error toast for initial load failures - polling will eventually succeed
+          // User won't see disruptive error messages on page load
+        }
+      }
+    };
+    
+    // Delay initial fetch to ensure authentication is fully initialized
+    // This prevents race conditions where the API token isn't ready yet
+    const initTimer = setTimeout(() => {
+      performInitialFetch(1);
+    }, INITIAL_FETCH_DELAY);
+    
+    // Cleanup function
     return () => {
+      clearTimeout(initTimer);
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -456,33 +517,29 @@ export function useNotifications(
       const now = Date.now();
       // Debounce to prevent rapid successive opens from triggering multiple fetches
       if (now - lastOpenTimeRef.current > 300) {
-        console.log('[Notifications] Notification center opened, refreshing ALL notifications...');
+        console.log('[Notifications Hook] Notification center opened, refreshing ALL notifications...');
         lastOpenTimeRef.current = now;
         isRefreshingRef.current = true;
         
         // Force refresh all notifications when center opens - no filters
-        fetchNotifications({ page: 1, limit })
+        Promise.all([
+          fetchNotifications({ page: 1, limit }),
+          fetchUnreadCount()
+        ])
           .then(() => {
-            console.log('[Notifications] Fetch completed after opening center');
+            console.log('[Notifications Hook] Refresh completed after opening center');
           })
           .catch(err => {
             // Don't log canceled errors as they're expected
             if (err?.name !== 'AbortError' && err?.code !== 'ERR_CANCELED' && err?.message !== 'canceled') {
-              console.error('[Notifications] Error fetching on open:', err);
-              setError(err?.message || 'Failed to fetch notifications');
+              console.error('[Notifications Hook] Error refreshing on open:', err);
+              // Set error state so user sees something went wrong
+              setError(err?.message || 'Failed to refresh notifications');
             }
           })
           .finally(() => {
             isRefreshingRef.current = false;
           });
-        
-        // Also refresh unread count (but don't block on it)
-        fetchUnreadCount().catch(err => {
-          // Don't log canceled errors
-          if (err?.name !== 'AbortError' && err?.code !== 'ERR_CANCELED' && err?.message !== 'canceled') {
-            console.error('[Notifications] Error fetching unread count on open:', err);
-          }
-        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
