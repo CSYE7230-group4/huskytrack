@@ -7,6 +7,7 @@ const eventSearchService = require('../services/eventSearch');
 const eventService = require('../services/eventService');
 const { asyncHandler } = require('../utils/errors');
 const mongoose = require('mongoose');
+const uploadService = require('../services/uploadService');
 
 // NEW REQUIRED IMPORTS (unchanged ones kept)
 const {
@@ -30,7 +31,30 @@ const createEvent = asyncHandler(async (req, res) => {
     const organizerId = req.user.id;
     const eventData = req.body;
 
+    // Handle image upload if present
+    if (req.file) {
+        try {
+            console.log('[Event Create] Image file detected, uploading...');
+            const uploadResult = await uploadService.handleImageUpload(req.file, req.user);
+            eventData.imageUrl = uploadResult.imageUrl;
+            console.log('[Event Create] Image uploaded successfully:', uploadResult.imageUrl);
+            
+            // Mark image as used for the event (will be updated with actual eventId after creation)
+            // This is done asynchronously and non-blocking
+        } catch (uploadError) {
+            console.error('[Event Create] Image upload failed:', uploadError);
+            // Continue with event creation even if image upload fails
+            // User can add image later via update
+        }
+    }
+
     const event = await eventService.createEvent(eventData, organizerId);
+    
+    // If we uploaded an image, mark it as used by this event
+    if (eventData.imageUrl && event._id) {
+        uploadService.markImageAsUsed(eventData.imageUrl, event._id)
+            .catch(err => console.error('[Event Create] Failed to mark image as used:', err));
+    }
 
     // Send notification to organizer if event is published directly
     if (event.status === 'PUBLISHED') {
@@ -272,8 +296,30 @@ const updateEvent = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const updateData = req.body;
 
+    // Handle image upload if present
+    if (req.file) {
+        try {
+            console.log('[Event Update] Image file detected, uploading...');
+            const uploadResult = await uploadService.handleImageUpload(req.file, req.user);
+            updateData.imageUrl = uploadResult.imageUrl;
+            console.log('[Event Update] Image uploaded successfully:', uploadResult.imageUrl);
+            
+            // TODO: Consider deleting old image if it exists
+            // This would require fetching the event first to get the old imageUrl
+        } catch (uploadError) {
+            console.error('[Event Update] Image upload failed:', uploadError);
+            // Continue with event update even if image upload fails
+        }
+    }
+
     // 1. Update event
     const event = await eventService.updateEvent(id, updateData, userId);
+    
+    // If we uploaded a new image, mark it as used by this event
+    if (updateData.imageUrl && event._id) {
+        uploadService.markImageAsUsed(updateData.imageUrl, event._id)
+            .catch(err => console.error('[Event Update] Failed to mark image as used:', err));
+    }
 
     // 2. Fetch attendees (registered users)
     const attendeesResult = await registrationService.getEventAttendees(id, userId, {}, { page: 1, limit: 500 });
