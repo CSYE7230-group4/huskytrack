@@ -22,9 +22,21 @@ export async function createEvent(
   status: EventStatus
 ) {
   try {
-    const payload = buildEventPayload(data, status);
-    const res = await api.post(API_BASE, payload);
-    return res.data;
+    // If image file is present, send as FormData (multipart/form-data)
+    // Otherwise, send as JSON
+    if (data.imageFile) {
+      const formData = buildEventFormData(data, status);
+      const res = await api.post(API_BASE, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data;
+    } else {
+      const payload = buildEventPayload(data, status);
+      const res = await api.post(API_BASE, payload);
+      return res.data;
+    }
   } catch (err: any) {
     // api.ts wraps errors into ApiError with optional 'details'
     let message = err?.message || "Failed to create event";
@@ -50,9 +62,21 @@ export async function updateEvent(
   status: EventStatus
 ) {
   try {
-    const payload = buildEventPayload(data, status);
-    const res = await api.put(`${API_BASE}/${id}`, payload);
-    return res.data;
+    // If image file is present, send as FormData (multipart/form-data)
+    // Otherwise, send as JSON
+    if (data.imageFile) {
+      const formData = buildEventFormData(data, status);
+      const res = await api.put(`${API_BASE}/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data;
+    } else {
+      const payload = buildEventPayload(data, status);
+      const res = await api.put(`${API_BASE}/${id}`, payload);
+      return res.data;
+    }
   } catch (err: any) {
     // api.ts wraps errors into ApiError with optional 'details'
     let message = err?.message || "Failed to update event";
@@ -237,6 +261,157 @@ export async function deleteEvent(id: string): Promise<void> {
 /* =======================================================
    Payload Builder — map form values to backend schema
    ======================================================= */
+
+/**
+ * Build FormData for event creation/update with image upload
+ * Used when imageFile is present
+ */
+function buildEventFormData(values: EventFormValues, status?: EventStatus): FormData {
+  const formData = new FormData();
+  
+  // Add the image file if present
+  if (values.imageFile) {
+    formData.append('image', values.imageFile);
+  }
+  
+  // Parse dates and build the event data (same as buildEventPayload)
+  const parseDate = (dateStr: string, timeStr: string): Date => {
+    if (!dateStr || !timeStr) {
+      throw new Error(`Missing date or time: date="${dateStr}", time="${timeStr}"`);
+    }
+    
+    const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!dateMatch) {
+      throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
+    }
+    
+    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (!timeMatch) {
+      throw new Error(`Invalid time format: ${timeStr}. Expected HH:mm`);
+    }
+    
+    const [, yearStr, monthStr, dayStr] = dateMatch;
+    const [, hoursStr, minutesStr] = timeMatch;
+    
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    
+    if (month < 1 || month > 12) {
+      throw new Error(`Invalid month: ${month}`);
+    }
+    if (day < 1 || day > 31) {
+      throw new Error(`Invalid day: ${day}`);
+    }
+    if (hours < 0 || hours > 23) {
+      throw new Error(`Invalid hours: ${hours}`);
+    }
+    if (minutes < 0 || minutes > 59) {
+      throw new Error(`Invalid minutes: ${minutes}`);
+    }
+    
+    const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      throw new Error(`Invalid date: ${year}-${month}-${day}`);
+    }
+    
+    return date;
+  };
+  
+  let start: Date;
+  let end: Date;
+  
+  try {
+    start = parseDate(values.startDate, values.startTime);
+  } catch (err: any) {
+    throw new Error(`Start date/time error: ${err.message}`);
+  }
+  
+  try {
+    end = parseDate(values.endDate, values.endTime);
+  } catch (err: any) {
+    throw new Error(`End date/time error: ${err.message}`);
+  }
+  
+  const isSameDate = values.startDate === values.endDate;
+  
+  if (!isSameDate) {
+    if (values.endDate < values.startDate) {
+      throw new Error(
+        `End date (${values.endDate}) must be after start date (${values.startDate})`
+      );
+    }
+  } else {
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    
+    if (endTime <= startTime) {
+      throw new Error(
+        `End time (${values.endTime}) must be after start time (${values.startTime}) for same-day events`
+      );
+    }
+    
+    const durationMs = endTime - startTime;
+    const minDurationMs = 30 * 60 * 1000;
+    if (durationMs < minDurationMs) {
+      const durationMinutes = Math.round(durationMs / (60 * 1000));
+      throw new Error(
+        `Event must be at least 30 minutes long (current duration: ${durationMinutes} minutes)`
+      );
+    }
+  }
+
+  const mappedStatus =
+    status === "published"
+      ? "PUBLISHED"
+      : status === "cancelled"
+      ? "CANCELLED"
+      : status === "past"
+      ? "PAST"
+      : "DRAFT";
+
+  // Build location object
+  const location: any = {
+    name: values.location.venue,
+    address: values.location.address || undefined,
+  };
+  
+  if (values.location.latitude !== null && values.location.longitude !== null) {
+    location.coordinates = {
+      latitude: values.location.latitude,
+      longitude: values.location.longitude,
+    };
+  }
+  
+  if (values.location.room) {
+    location.room = values.location.room;
+  }
+
+  // Append all event data as JSON string fields (FormData requires strings)
+  formData.append('title', values.title);
+  formData.append('description', values.description);
+  formData.append('category', mapCategoryToBackend(values.category));
+  formData.append('status', mappedStatus);
+  formData.append('startDate', start.toISOString());
+  formData.append('endDate', end.toISOString());
+  formData.append('location', JSON.stringify(location));
+  formData.append('tags', JSON.stringify(values.tags || []));
+  formData.append('isPublic', 'true');
+  
+  if (values.capacity !== null && values.capacity !== undefined) {
+    formData.append('maxRegistrations', values.capacity.toString());
+  }
+  
+  // If imageUrl already exists (when updating), include it
+  if (values.imageUrl && !values.imageFile) {
+    formData.append('imageUrl', values.imageUrl);
+  }
+  
+  return formData;
+}
 
 function mapCategoryToBackend(category: EventCategory | ""): string {
   const map: Record<string, string> = {
