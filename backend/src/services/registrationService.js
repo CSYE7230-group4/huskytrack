@@ -12,7 +12,7 @@ const { Notification, NotificationType } = require('../models/Notification');
 const mongoose = require('mongoose');
 
 const {
-  sendRegistrationConfirmationEmail: sendEmailHelper,
+  sendRegistrationConfirmationEmail,
   sendEventCancellationEmail
 } = require('../services/notificationService');
 
@@ -108,7 +108,7 @@ class RegistrationService {
             populate: ['event', 'user']
           });
 
-          await sendEmailHelper({
+          await sendRegistrationConfirmationEmail({
             to: fullRegistration.user.email,
             userName: fullRegistration.user.firstName,
             eventName: fullRegistration.event.title,
@@ -127,7 +127,7 @@ class RegistrationService {
             populate: ['event', 'user']
           });
 
-          await sendEmailHelper({
+          await sendRegistrationConfirmationEmail({
             to: populated.user.email,
             userName: populated.user.firstName,
             eventName: populated.event.title,
