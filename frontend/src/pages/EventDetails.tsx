@@ -86,16 +86,16 @@ export default function EventDetails() {
   useEffect(() => {
     if (!id) {
       setError("Event ID is required");
-      setIsLoading(false);
+      setLoading(false);
       return;
     }
 
     const fetchEvent = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         setError(null);
 
-        const response = await api.get<{ success: boolean; data: { event: EventDetailsData } }>(
+        const response = await api.get<{ success: boolean; data: { event: Event } }>(
           `/events/${id}`
         );
 
@@ -103,9 +103,9 @@ export default function EventDetails() {
       } catch (err: any) {
         const errorMessage = err?.response?.data?.message || "Failed to load event";
         setError(errorMessage);
-        showToast(errorMessage, "error");
+        console.error(errorMessage);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -129,29 +129,37 @@ export default function EventDetails() {
       return `${datePart} at ${time}`;
     }
 
-  // ==== Register Button Handler (新逻辑) ====
+    const endDate = new Date(end);
+    const startTime = startDate.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const endTime = endDate.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+    return `${datePart} from ${startTime} to ${endTime}`;
+  };
+
+  // ==== Register Button Handler ====
   const handleRegister = async () => {
-    // 1. 设置 Loading 状态
     setRegistering(true);
 
     try {
       if (!event) return;
 
-      // 2. 尝试调用真实 API
       await registerForEvent(event._id);
 
-      // 3. 成功时的逻辑
       alert("Successfully registered! 🎉");
-      navigate("/app/my-events"); // 确保跳转到正确的 My Events 路径
+      navigate("/app/my-events");
 
     } catch (err) {
       console.warn("Backend API failed, falling back to Demo Mode");
 
-      // 4. 🔴 关键点：如果是演示模式（后端连不上），我们也假装成功！
-      // 模拟 1秒 延迟，让用户看到转圈圈
       setTimeout(() => {
         alert("Successfully registered! (Demo Mode) 🎉");
-        navigate("/app/my-events"); // 跳转到 My Events
+        navigate("/app/my-events");
       }, 1000);
 
     } finally {
@@ -174,21 +182,13 @@ export default function EventDetails() {
     setNewCommentText("");
   };
 
-  const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-
-    return `${datePart} from ${startTime} to ${endTime}`;
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="px-6 py-10 max-w-4xl mx-auto mt-6 space-y-6">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-72 w-full" />
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-32 w-full" />
+        <div className="h-8 w-24 bg-gray-200 animate-pulse rounded" />
+        <div className="h-72 w-full bg-gray-200 animate-pulse rounded" />
+        <div className="h-12 w-3/4 bg-gray-200 animate-pulse rounded" />
+        <div className="h-32 w-full bg-gray-200 animate-pulse rounded" />
       </div>
     );
   }
@@ -203,8 +203,8 @@ export default function EventDetails() {
   }
 
   const image = event.bannerImageUrl || event.imageUrl || "/placeholder-event.png";
-  const max = event.maxRegistrations ?? 0;
-  const current = event.currentRegistrations ?? 0;
+  const max = event.capacity || event.maxRegistrations || 0;
+  const current = event.registeredUsers?.length || event.currentRegistrations || 0;
   const hasCapacity = max > 0;
   const spotsRemaining = hasCapacity ? Math.max(max - current, 0) : null;
   const isFull = hasCapacity && spotsRemaining === 0;
@@ -214,6 +214,7 @@ export default function EventDetails() {
   const endDate = event.endDate ? new Date(event.endDate) : null;
   const isCompleted = endDate ? endDate <= now : false;
   const isPast = endDate ? endDate < now : false;
+  const isCancelled = event.status === "CANCELLED";
 
   return (
     <div className="px-6 py-10 max-w-4xl mx-auto mt-6 space-y-6">
@@ -226,22 +227,13 @@ export default function EventDetails() {
         Back
       </button>
 
-      {/* Banner Image with Bookmark Button */}
+      {/* Banner Image */}
       <div className="relative">
         <img
           src={image}
           alt={event.title}
           className="w-full h-72 object-cover rounded-xl shadow-md"
         />
-        {event._id && (
-          <div className="absolute top-4 right-4">
-            <BookmarkButton
-              eventId={event._id}
-              size="lg"
-              showCount={true}
-            />
-          </div>
-        )}
       </div>
 
       {/* Event Info */}
@@ -339,26 +331,6 @@ export default function EventDetails() {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 pt-4 items-center">
-        {!isPast && (
-          <Button className="w-full sm:w-auto" disabled={isFull}>
-            {isFull ? "Event Full" : "Register for Event"}
-          </Button>
-        )}
-        
-        {/* Like Button - Only show for completed events */}
-        {isCompleted && event._id && (
-          <div className={isPast ? "" : "ml-auto"}>
-            <LikeButton
-              eventId={event._id}
-              size="md"
-              showCount={true}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
-}
 }
