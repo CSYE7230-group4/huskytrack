@@ -138,7 +138,24 @@ const EventSchema = new mongoose.Schema({
     required: [true, 'Event end date is required'],
     validate: {
       validator: function(v) {
-        return v > this.startDate;
+        // Get startDate - during updates, this might be the new value or old value
+        // We rely on service-level validation for proper multi-day event handling
+        const start = this.startDate;
+        if (!start) return true; // Skip validation if startDate not set yet
+        
+        // Extract date strings (YYYY-MM-DD) for comparison
+        const startDateOnly = start.toISOString().slice(0, 10);
+        const endDateOnly = v.toISOString().slice(0, 10);
+        const isSameDate = startDateOnly === endDateOnly;
+        
+        if (!isSameDate) {
+          // Multi-day event: compare date strings only (times don't matter)
+          // This allows events like Nov 30 3:25 PM to Dec 2 4:25 PM
+          return endDateOnly > startDateOnly;
+        } else {
+          // Same-day event: compare full date/time
+          return v > start;
+        }
       },
       message: 'Event end date must be after start date'
     }
@@ -187,8 +204,24 @@ const EventSchema = new mongoose.Schema({
 EventSchema.index({ startDate: 1, status: 1 }); // For upcoming events query
 EventSchema.index({ category: 1, status: 1 }); // For category filtering
 EventSchema.index({ organizer: 1, status: 1 }); // For user's events
-EventSchema.index({ title: 'text', description: 'text', tags: 'text' }); // Text search
+// Text search index with weights (title: 10, description: 5, tags: 3)
+EventSchema.index({ 
+  title: 'text', 
+  description: 'text', 
+  tags: 'text' 
+}, {
+  weights: {
+    title: 10,
+    description: 5,
+    tags: 3
+  },
+  name: 'text_search_index'
+}); 
 EventSchema.index({ 'location.city': 1, 'location.state': 1 }); // Location-based search
+EventSchema.index({ 'location.name': 1 }); // Venue name search
+EventSchema.index({ tags: 1 }); // Tag filtering
+EventSchema.index({ currentRegistrations: -1 }); // Popularity sorting
+EventSchema.index({ status: 1, startDate: 1, category: 1 }); // Compound index for common queries
 
 // Virtual property: Check if event is full
 EventSchema.virtual('isFull').get(function() {

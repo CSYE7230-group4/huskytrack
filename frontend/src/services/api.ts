@@ -14,6 +14,7 @@ import {
   isTokenExpired,
 } from '../utils/tokenStorage';
 import { createApiError, isUnauthorizedError } from '../utils/apiErrors';
+import type { UserProfile, NotificationPreferences, PasswordChangePayload } from '../types';
 
 // API base URL - adjust based on your backend configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
@@ -251,6 +252,47 @@ export const getMyRegistrations = async (
 ): Promise<import('../types').Registration[]> => {
   const response = await api.get('/registrations/me', { params });
   return response.data.data || response.data;
+};
+
+// --- Profile & Settings API (Task 3.5) ---
+
+/**
+ * Update User Profile (Name, University, Bio, Interests)
+ */
+export const updateProfile = async (data: Partial<UserProfile>) => {
+  const response = await api.put('/users/profile', data);
+  return response.data.data || response.data;
+};
+
+/**
+ * Update Notification Preferences
+ */
+export const updatePreferences = async (prefs: NotificationPreferences) => {
+  const response = await api.put('/users/preferences', prefs);
+  return response.data.data || response.data;
+};
+
+/**
+ * Change Password
+ */
+export const changePassword = async (data: PasswordChangePayload) => {
+  const response = await api.put('/users/password', data);
+  return response.data;
+};
+
+/**
+ * Upload Avatar
+ * (Simulate upload for now if backend Task 2.8 is not fully integrated)
+ */
+export const uploadAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  // Assuming Task 2.8 created this endpoint
+  const response = await api.post('/upload/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.url; // Assuming backend returns the image URL
 };
 
 export default api;

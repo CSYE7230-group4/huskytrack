@@ -11,11 +11,15 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [nextId, setNextId] = useState(1);
 
   const showToast = (message: string, type: ToastType = "info") => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => removeToast(id), 3000);
+    setNextId((current) => {
+      const id = current;
+      setToasts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => removeToast(id), 3000);
+      return current + 1;
+    });
   };
 
   const removeToast = (id: number) => {

@@ -8,7 +8,7 @@ RUN npm install --production
 
 COPY . .
 
-# Your backend listens on 5000 (adjust if needed)
-EXPOSE 5000
+# Your backend listens on 3000 (adjust if needed)
+EXPOSE 3000
 
 CMD ["npm", "start"]

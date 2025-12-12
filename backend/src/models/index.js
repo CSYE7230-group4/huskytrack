@@ -11,6 +11,7 @@ const { Bookmark } = require('./Bookmark');
 const { Notification, NotificationType, NotificationStatus } = require('./Notification');
 const { NotificationPreferencesSchema } = require('./NotificationPreferences');
 const { CalendarSync, CalendarProvider, SyncStatus } = require('./CalendarSync');
+const { RecommendationFeedback } = require('./RecommendationFeedback');
 
 module.exports = {
   // Models
@@ -21,6 +22,7 @@ module.exports = {
   Bookmark,
   Notification,
   CalendarSync,
+  RecommendationFeedback,
   
   // Schemas (for embedding)
   NotificationPreferencesSchema,

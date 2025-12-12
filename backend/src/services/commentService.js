@@ -7,6 +7,7 @@
 const commentRepository = require('../repositories/commentRepository');
 const eventRegistrationRepository = require('../repositories/eventRegistrationRepository');
 const eventRepository = require('../repositories/eventRepository');
+const notificationService = require('./notificationService');
 const { Notification, NotificationType } = require('../models/Notification');
 const { RegistrationStatus } = require('../models/EventRegistration');
 const { EventStatus } = require('../models/Event');
@@ -353,8 +354,9 @@ class CommentService {
     try {
       const event = await eventRepository.findById(eventId, { populate: ['organizer'] });
       const commenter = await User.findById(commenterId);
+      const comment = await commentRepository.findById(commentId);
 
-      if (!event || !commenter) {
+      if (!event || !commenter || !comment) {
         return;
       }
 
@@ -363,15 +365,11 @@ class CommentService {
         return;
       }
 
-      await Notification.create({
-        user: event.organizer._id,
-        type: NotificationType.NEW_COMMENT,
-        title: 'New Comment on Your Event',
-        message: `${commenter.firstName} ${commenter.lastName} commented on "${event.title}"`,
-        event: eventId,
-        comment: commentId,
-        actionUrl: `/events/${eventId}/comments`
-      });
+      await notificationService.notifyNewComment(
+        eventId,
+        commenterId,
+        comment.content
+      );
     } catch (error) {
       console.error('Error sending comment notification:', error);
     }
