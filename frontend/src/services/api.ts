@@ -249,9 +249,9 @@ export const cancelRegistration = async (registrationId: string) => {
  */
 export const getMyRegistrations = async (
   params?: any
-): Promise<import('../types').Registration[]> => {
+): Promise<Registration[]> => {
   const response = await api.get('/registrations/me', { params });
-  return response.data.data || response.data;
+  return response.data.data?.registrations || response.data.registrations || response.data.data || response.data;
 };
 
 // --- Profile & Settings API (Task 3.5) ---

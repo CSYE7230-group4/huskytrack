@@ -4,9 +4,9 @@ import { Users, ArrowLeft } from "lucide-react";
 import api from "../services/api";
 import { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
-import { getEventById, registerForEvent } from "../services/api";
+import { getEventById, registerForEvent, cancelRegistration, getMyRegistrations } from "../services/api";
 import { Calendar, MapPin, Heart, Bookmark, Share2, User as UserIcon, Clock } from "lucide-react";
-import type { Event } from "../types";
+import type { Event, Registration } from "../types";
 // Import useAuth hook (from context or hooks folder)
 import { useAuth } from "../contexts/AuthContext";
 
@@ -82,6 +82,7 @@ export default function EventDetails() {
   const [newCommentText, setNewCommentText] = useState("");
 
   const [registering, setRegistering] = useState(false);
+  const [userRegistration, setUserRegistration] = useState<Registration | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -111,6 +112,41 @@ export default function EventDetails() {
 
     fetchEvent();
   }, [id]);
+
+  // Fetch user's registration status for this event
+  useEffect(() => {
+    if (!id || !user) {
+      setUserRegistration(null);
+      return;
+    }
+
+    const fetchUserRegistration = async () => {
+      try {
+        const registrations = await getMyRegistrations();
+        console.log('Fetched registrations:', registrations);
+        console.log('Current event ID:', id);
+        
+        // Find registration for this specific event
+        const registration = registrations.find(
+          (reg: Registration) => {
+            const eventId = typeof reg.event === 'object' ? reg.event._id : reg.event;
+            console.log('Comparing:', eventId, 'with', id, 'Match:', eventId === id);
+            return eventId === id && 
+              (reg.status === 'REGISTERED' || reg.status === 'WAITLISTED');
+          }
+        );
+        
+        console.log('Found registration:', registration);
+        setUserRegistration(registration || null);
+      } catch (err: any) {
+        console.error("Failed to fetch user registration:", err);
+        // Don't show error to user, just assume not registered
+        setUserRegistration(null);
+      }
+    };
+
+    fetchUserRegistration();
+  }, [id, user]);
 
   const formatDateRange = (start?: string, end?: string) => {
     if (!start) return "";
@@ -149,18 +185,64 @@ export default function EventDetails() {
     try {
       if (!event) return;
 
-      await registerForEvent(event._id);
+      const response = await registerForEvent(event._id);
+      console.log('Registration response:', response);
+      
+      // Update local state with the new registration
+      // Backend returns: { success, message, data: { registration, status, waitlistPosition } }
+      if (response.success && response.data?.registration) {
+        console.log('Setting user registration:', response.data.registration);
+        setUserRegistration(response.data.registration);
+      }
 
-      alert("Successfully registered! 🎉");
-      navigate("/app/my-events");
+      const status = response.data?.status || response.status;
+      alert(`Successfully registered! 🎉${status === 'WAITLISTED' ? ' You have been added to the waitlist.' : ''}`);
+      // Don't navigate away - stay on the event details page
+      // navigate("/app/my-events");
 
-    } catch (err) {
-      console.warn("Backend API failed, falling back to Demo Mode");
+    } catch (err: any) {
+      // Extract error message from backend response
+      const errorMessage = err?.response?.data?.message || 
+                          err?.response?.data?.error || 
+                          err?.message || 
+                          "Failed to register for event. Please try again.";
+      
+      console.error("Registration error:", errorMessage);
+      alert(errorMessage);
 
-      setTimeout(() => {
-        alert("Successfully registered! (Demo Mode) 🎉");
-        navigate("/app/my-events");
-      }, 1000);
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  // ==== Cancel Registration Handler ====
+  const handleCancelRegistration = async () => {
+    if (!userRegistration) return;
+
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel your registration for this event?"
+    );
+
+    if (!confirmCancel) return;
+
+    setRegistering(true);
+
+    try {
+      await cancelRegistration(userRegistration._id);
+      
+      // Clear the registration from local state
+      setUserRegistration(null);
+      
+      alert("Registration cancelled successfully.");
+
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 
+                          err?.response?.data?.error || 
+                          err?.message || 
+                          "Failed to cancel registration. Please try again.";
+      
+      console.error("Cancellation error:", errorMessage);
+      alert(errorMessage);
 
     } finally {
       setRegistering(false);
@@ -215,6 +297,11 @@ export default function EventDetails() {
   const isCompleted = endDate ? endDate <= now : false;
   const isPast = endDate ? endDate < now : false;
   const isCancelled = event.status === "CANCELLED";
+
+  // Check if user is registered for this event
+  const isUserRegistered = userRegistration && 
+    (userRegistration.status === 'REGISTERED' || userRegistration.status === 'WAITLISTED');
+  const isUserWaitlisted = userRegistration?.status === 'WAITLISTED';
 
   return (
     <div className="px-6 py-10 max-w-4xl mx-auto mt-6 space-y-6">
@@ -272,28 +359,41 @@ export default function EventDetails() {
           })()}
         </div>
 
-            {/* Register Button */}
-            <Button 
-              className="w-full h-12 text-lg shadow-md hover:shadow-lg transition-all"
-              // 绑定新的 loading 状态
-              isLoading={registering} 
-              // 禁用逻辑保持不变
-              disabled={isFull || isCancelled || isPast || registering}
-              // 绑定新的处理函数
-              onClick={handleRegister}
-            >
-              {/* 按钮文字逻辑 */}
-              {isCancelled 
-                ? "Event Cancelled" 
-                : isPast 
-                  ? "Event Ended" 
-                  : isFull 
-                    ? "Join Waitlist" 
-                    : registering 
-                      ? "Registering..." 
-                      : "Register Now"
-              }
-            </Button>
+            {/* Register/Cancel Button */}
+            {isUserRegistered ? (
+              <Button 
+                className="w-full h-12 text-lg shadow-md hover:shadow-lg transition-all"
+                variant="outline"
+                isLoading={registering} 
+                disabled={registering}
+                onClick={handleCancelRegistration}
+              >
+                {registering 
+                  ? "Cancelling..." 
+                  : isUserWaitlisted 
+                    ? "Leave Waitlist"
+                    : "Cancel Registration"
+                }
+              </Button>
+            ) : (
+              <Button 
+                className="w-full h-12 text-lg shadow-md hover:shadow-lg transition-all"
+                isLoading={registering} 
+                disabled={isCancelled || isPast || registering}
+                onClick={handleRegister}
+              >
+                {isCancelled 
+                  ? "Event Cancelled" 
+                  : isPast 
+                    ? "Event Ended" 
+                    : isFull 
+                      ? "Join Waitlist" 
+                      : registering 
+                        ? "Registering..." 
+                        : "Register Now"
+                }
+              </Button>
+            )}
 
         {/* Tags */}
         {event.tags && event.tags.length > 0 && (
