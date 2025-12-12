@@ -6,6 +6,7 @@
 
 const eventRepository = require('../repositories/eventRepository');
 const { EventStatus } = require('../models/Event');
+const notificationService = require('./notificationService');
 const { ValidationError, NotFoundError, ForbiddenError, ConflictError } = require('../utils/errors');
 
 const {
@@ -150,9 +151,9 @@ class EventService {
    * @returns {Promise<Object>} Draft events and metadata
    */
   async getDraftEventsByOrganizer(organizerId, options = {}) {
-    const filters = { 
-      organizer: organizerId, 
-      status: EventStatus.DRAFT 
+    const filters = {
+      organizer: organizerId,
+      status: EventStatus.DRAFT
     };
     
     return await eventRepository.findAll(filters, {
@@ -186,10 +187,61 @@ class EventService {
     }
 
     // Validate dates if being updated
+    // Only validate start date in future if it's being changed
     if (updateData.startDate || updateData.endDate) {
       const newStartDate = updateData.startDate || event.startDate;
       const newEndDate = updateData.endDate || event.endDate;
-      this.validateEventDates(newStartDate, newEndDate);
+      
+      const start = new Date(newStartDate);
+      const end = new Date(newEndDate);
+      
+      // Validate dates are valid
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new ValidationError('Invalid start or end date');
+      }
+      
+      // Extract date strings (YYYY-MM-DD) using local date components to avoid timezone issues
+      // This ensures we compare the actual calendar dates, not UTC dates
+      const startYear = start.getFullYear();
+      const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+      const startDay = String(start.getDate()).padStart(2, '0');
+      const startDateOnly = `${startYear}-${startMonth}-${startDay}`;
+      
+      const endYear = end.getFullYear();
+      const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+      const endDay = String(end.getDate()).padStart(2, '0');
+      const endDateOnly = `${endYear}-${endMonth}-${endDay}`;
+      
+      const isSameDate = startDateOnly === endDateOnly;
+      
+      // For multi-day events: only check that end date is after start date (ignore time)
+      // For same-day events: check both date and time, plus minimum duration
+      if (!isSameDate) {
+        // Multi-day event: compare date strings
+        if (endDateOnly <= startDateOnly) {
+          throw new ValidationError(`End date (${endDateOnly}) must be after start date (${startDateOnly})`);
+        }
+        // For multi-day events, times don't matter - validation passes
+      } else {
+        // Same-day event: validate time and duration
+        if (end <= start) {
+          throw new ValidationError('End time must be after start time for same-day events');
+        }
+        
+        // Validate minimum duration (30 minutes) for same-day events
+        const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+        if (end - start < minDuration) {
+          throw new ValidationError('Event must be at least 30 minutes long');
+        }
+      }
+      
+      // Only validate start date is in future if it's being changed
+      if (updateData.startDate) {
+        const now = new Date();
+        if (start <= now) {
+          throw new ValidationError('Event start date must be in the future');
+        }
+      }
     }
 
     // If publishing, validate requirements
@@ -199,8 +251,8 @@ class EventService {
 
     // Cannot change capacity if it would be less than current registrations
     if (updateData.maxRegistrations !== undefined) {
-      if (updateData.maxRegistrations !== null && 
-          updateData.maxRegistrations < event.currentRegistrations) {
+      if (updateData.maxRegistrations !== null &&
+        updateData.maxRegistrations < event.currentRegistrations) {
         throw new ValidationError(
           `Cannot set capacity to ${updateData.maxRegistrations} when ${event.currentRegistrations} users are already registered`
         );
@@ -213,40 +265,53 @@ class EventService {
     }
 
     try {
-  const updatedEvent = await eventRepository.update(eventId, updateData);
-
-    // === SEND EVENT UPDATE EMAIL ===
-    try {
-      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
-        status: 'REGISTERED'
-      });
-
-      for (const attendee of attendees.registrations) {
-        await sendEventUpdateEmail({
-          to: attendee.user.email,
-          userName: attendee.user.firstName,
-          eventName: updatedEvent.title,
-          eventDate: updatedEvent.startDate,
-          eventLocation: updatedEvent.location,
-          eventId: updatedEvent._id
-        });
-      }
-    } catch (emailErr) {
-      console.error("Event update email failed:", emailErr);
-    }
-    // === END EMAIL ===
-
-    return updatedEvent;
-
-     } catch (error) {
-    {
-          if (error.name === 'ValidationError') {
-            throw new ValidationError(this.formatMongooseErrors(error));
-          }
-          throw error;
+      const updatedEvent = await eventRepository.update(eventId, updateData);
+      
+      // Notify registered users about significant updates (if event is published)
+      if (event.status === EventStatus.PUBLISHED && event.currentRegistrations > 0) {
+        // Check if significant fields were updated
+        const significantFields = ['title', 'startDate', 'endDate', 'location'];
+        const hasSignificantChanges = significantFields.some(field =>
+          updateData[field] !== undefined &&
+          JSON.stringify(updateData[field]) !== JSON.stringify(event[field])
+        );
+        
+        if (hasSignificantChanges) {
+          // Trigger notification asynchronously (don't block on failure)
+          this.notifyEventUpdate(eventId, updateData)
+            .catch(err => console.error('Failed to send event update notifications:', err));
         }
       }
+      
+      return updatedEvent;
+    } catch (error) {
+      if (error.name === 'ValidationError') {
+        throw new ValidationError(this.formatMongooseErrors(error));
+      }
+      throw error;
     }
+  }
+  
+  /**
+   * Helper method to notify users about event updates
+   * @param {String} eventId - Event ID
+   * @param {Object} updateData - Updated fields
+   */
+  async notifyEventUpdate(eventId, updateData) {
+    try {
+      const changes = [];
+      if (updateData.title) changes.push('Event title updated');
+      if (updateData.startDate) changes.push('Start time changed');
+      if (updateData.endDate) changes.push('End time changed');
+      if (updateData.location) changes.push('Location changed');
+      
+      const changeDescription = changes.join(', ');
+      await notificationService.notifyEventUpdate(eventId, changeDescription);
+    } catch (error) {
+      console.error('Error notifying event update:', error);
+    }
+  }
+
   /**
    * Delete event
    * @param {String} eventId - Event ID
@@ -337,32 +402,15 @@ class EventService {
       throw new ValidationError('Event is already cancelled');
     }
 
-    // TODO: Trigger notifications to registered users
     const cancelledEvent = await eventRepository.updateStatus(eventId, EventStatus.CANCELLED);
-
-    // === SEND EVENT CANCELLATION EMAIL ===
-    try {
-      const attendees = await eventRegistrationRepository.findByEvent(eventId, {
-        status: 'REGISTERED'
-      });
-
-      for (const attendee of attendees.registrations) {
-        await sendEventCancellationEmail({
-          to: attendee.user.email,
-          userName: attendee.user.firstName,
-          eventName: cancelledEvent.title,
-          eventDate: cancelledEvent.startDate,
-          eventLocation: cancelledEvent.location,
-          eventId: cancelledEvent._id
-        });
-      }
-    } catch (emailErr) {
-      console.error("Event cancellation email failed:", emailErr);
+    
+    // Trigger notifications to registered users (don't block on failure)
+    if (event.currentRegistrations > 0) {
+      notificationService.notifyEventCancellation(eventId)
+        .catch(err => console.error('Failed to send event cancellation notifications:', err));
     }
-    // === END EMAIL ===
-
+    
     return cancelledEvent;
-
   }
 
   /**
@@ -530,14 +578,39 @@ class EventService {
       throw new ValidationError('Event start date must be in the future');
     }
 
-    if (end <= start) {
-      throw new ValidationError('Event end date must be after start date');
-    }
-
-    // Events should be at least 30 minutes long
-    const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
-    if (end - start < minDuration) {
-      throw new ValidationError('Event must be at least 30 minutes long');
+    // Extract date strings (YYYY-MM-DD) using local date components to avoid timezone issues
+    // This ensures we compare the actual calendar dates, not UTC dates
+    const startYear = start.getFullYear();
+    const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+    const startDay = String(start.getDate()).padStart(2, '0');
+    const startDateOnly = `${startYear}-${startMonth}-${startDay}`;
+    
+    const endYear = end.getFullYear();
+    const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+    const endDay = String(end.getDate()).padStart(2, '0');
+    const endDateOnly = `${endYear}-${endMonth}-${endDay}`;
+    
+    const isSameDate = startDateOnly === endDateOnly;
+    
+    // For multi-day events: only check that end date is after start date (ignore time)
+    // For same-day events: check both date and time, plus minimum duration
+    if (!isSameDate) {
+      // Multi-day event: compare date strings
+      if (endDateOnly <= startDateOnly) {
+        throw new ValidationError(`End date (${endDateOnly}) must be after start date (${startDateOnly})`);
+      }
+      // For multi-day events, times don't matter - validation passes
+    } else {
+      // Same-day event: validate time and duration
+      if (end <= start) {
+        throw new ValidationError('End time must be after start time for same-day events');
+      }
+      
+      // Validate minimum duration (30 minutes) for same-day events
+      const minDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+      if (end - start < minDuration) {
+        throw new ValidationError('Event must be at least 30 minutes long');
+      }
     }
   }
 
