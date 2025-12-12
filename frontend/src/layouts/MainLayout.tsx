@@ -9,12 +9,33 @@ import NotificationBell from "../components/notifications/NotificationBell";
 import NotificationCenter from "../components/notifications/NotificationCenter";
 import { useNotifications } from "../hooks/useNotifications";
 import { NotificationProvider } from "../contexts/NotificationContext";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
+import { Menu } from "lucide-react";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const bellRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize sidebar state based on screen size
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    // Open by default on desktop (768px is md breakpoint in Tailwind)
+    return window.innerWidth >= 768;
+  });
+
+  // Handle window resize to auto-close sidebar on mobile, auto-open on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true); // Auto-open on desktop
+      } else {
+        setIsSidebarOpen(false); // Auto-close on mobile
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize notifications hook
   const {
@@ -52,17 +73,35 @@ export default function MainLayout() {
       <div className="min-h-screen flex bg-background">
 
         {/* Sidebar */}
-        <SidebarLayout />
+        <SidebarLayout 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
 
         {/* Right Section */}
-        <div className="flex-1 flex flex-col">
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${
+          isSidebarOpen ? 'md:ml-60' : 'ml-0'
+        }`}>
 
         {/* Top Navbar */}
         <header className="bg-white/90 backdrop-blur shadow-sm">
-          <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+          <div className={`mx-auto flex items-center justify-between px-6 py-3 transition-all duration-300 ${
+            isSidebarOpen ? 'max-w-6xl' : 'max-w-full'
+          }`}>
 
             {/* Brand */}
             <div className="flex items-center gap-2">
+              {/* Hamburger button - visible on mobile or when sidebar is closed on desktop */}
+              {!isSidebarOpen && (
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Open navigation"
+                >
+                  <Menu className="h-6 w-6 text-gray-700" />
+                </button>
+              )}
               <img
                 src="src/assets/NewLogoHuskyTrack.svg"
                 alt="Husky logo"
@@ -138,7 +177,9 @@ export default function MainLayout() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-6xl mx-auto px-6 py-8">
+        <main className={`mx-auto px-6 py-8 transition-all duration-300 ${
+          isSidebarOpen ? 'max-w-6xl' : 'max-w-full'
+        }`}>
           <Outlet />
         </main>
 

@@ -78,7 +78,7 @@ const router = createBrowserRouter([
       { path: "profile", element: <Profile /> },
 
       // UI Guide
-      { path: "ui-guide", element: <UiGuide /> },
+      // { path: "ui-guide", element: <UiGuide /> },
       
       {  path: "organizer",  element: <OrganizerDashboard />,},
     ],
