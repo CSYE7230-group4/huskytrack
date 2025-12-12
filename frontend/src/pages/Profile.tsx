@@ -1,53 +1,43 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { UserProfile } from "../types";
-import { X } from "lucide-react"; // Add lucide-react X icon
-
-// Optionally, import your API service here
-// import { changePassword } from "../api/auth";
-
-// Example universe of interests (could be fetched from config later)
-const ALL_INTERESTS = [
-  "Technology",
-  "Music",
-  "Sports",
-  "AI",
-  "Web Development",
-  "Seminars",
-  "Workshops",
-  "Cultural",
-  "Gaming",
-];
-
-const MOCK_USER: UserProfile = {
-  _id: "1234567890abcdef",
-  firstName: "Jenny",
-  lastName: "S",
-  email: "jenny@gmail.com",
-  university: "Tech University",
-  avatar: "https://i.pravatar.cc/150?img=5",
-  bio: "Passionate about tech and education. Loves hackathons and coding events.",
-  interests: [
-    "Technology",
-    "Workshops",
-    "Seminars",
-    "AI",
-    "Web Development",
-    "Sports",
-  ],
-  preferences: {
-    emailUpdates: true,
-    pushNotifications: false,
-    reminderTime: 30,
-  },
-};
+import api from "../services/api";
+import { getAccessToken } from "../utils/tokenStorage";
 
 type TabKey = "profile" | "preferences" | "security";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "profile", label: "Profile" },
-  { key: "preferences", label: "Preferences" },
+  // { key: "preferences", label: "Preferences" },
   { key: "security", label: "Security" },
 ];
+
+/**
+ * Helper function to map API user response to UserProfile format
+ * Handles differences between API response (notificationPreferences) and frontend types (preferences)
+ */
+function mapApiUserToUserProfile(apiUser: any): UserProfile {
+  const preferences = apiUser.notificationPreferences || apiUser.preferences || {
+    emailUpdates: true,
+    pushNotifications: false,
+    reminderTime: 30,
+  };
+  
+  return {
+    _id: apiUser._id,
+    firstName: apiUser.firstName,
+    lastName: apiUser.lastName,
+    email: apiUser.email,
+    university: apiUser.university,
+    bio: apiUser.bio || "",
+    avatar: apiUser.avatar || "",
+    interests: Array.isArray(apiUser.interests) ? apiUser.interests : [],
+    preferences: {
+      emailUpdates: preferences.emailUpdates ?? true,
+      pushNotifications: preferences.pushNotifications ?? false,
+      reminderTime: preferences.reminderTime ?? 30,
+    },
+  };
+}
 
 // Small Camera/Upload SVG
 function CameraIcon() {
@@ -64,63 +54,25 @@ function CameraIcon() {
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
-  const [user, setUser] = useState<UserProfile>(MOCK_USER);
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Editable fields state (clone user for changes)
-  const [editProfile, setEditProfile] = useState(() => ({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    university: user.university,
-    bio: user.bio || "",
-    interests: [...user.interests],
-    avatar: user.avatar,
-  }));
-
-  // --- Interests Section Editable State ---
-  const [newInterest, setNewInterest] = useState(""); // for the add input
-
-  // Add interest (checks, then adds to local editProfile.interests)
-  const handleAddInterest = () => {
-    const trimmed = newInterest.trim();
-    if (!trimmed) return;
-    // Case-insensitive prevent duplicates
-    const exists = editProfile.interests.some(
-      (i) => i.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (exists) return;
-    setEditProfile((prev) => ({
-      ...prev,
-      interests: [...prev.interests, trimmed],
-    }));
-    setNewInterest("");
-  };
-
-  // Remove an interest from editProfile.interests
-  const handleRemoveInterest = (tag: string) => {
-    setEditProfile((prev) => ({
-      ...prev,
-      interests: prev.interests.filter((i) => i !== tag),
-    }));
-  };
-
-  // Allow Enter key to add interest
-  const handleInterestInputKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddInterest();
-    }
-  };
+  const [editProfile, setEditProfile] = useState({
+    firstName: "",
+    lastName: "",
+    university: "",
+    avatar: "",
+  });
 
   // Preferences editable state
-  const [prefState, setPrefState] = useState(() => ({
-    emailUpdates: user.preferences.emailUpdates,
-    pushNotifications: user.preferences.pushNotifications,
-    reminderTime: user.preferences.reminderTime,
-  }));
+  const [prefState, setPrefState] = useState({
+    emailUpdates: true,
+    pushNotifications: false,
+    reminderTime: 30 as 15 | 30 | 60,
+  });
   const [savingPrefs, setSavingPrefs] = useState(false);
 
   // Security tab state
@@ -136,6 +88,53 @@ export default function Profile() {
   // Avatar upload handling
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch user profile on component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const token = getAccessToken();
+        if (!token) {
+          setError("No access token found. Please log in again.");
+          setLoading(false);
+          return;
+        }
+
+        const response = await api.get('/auth/me');
+        
+        if (response.data?.success && response.data?.data?.user) {
+          const userData = mapApiUserToUserProfile(response.data.data.user);
+          setUser(userData);
+          
+          // Update editable states with fetched data
+          setEditProfile({
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            university: userData.university,
+            avatar: userData.avatar || "",
+          });
+          
+          setPrefState({
+            emailUpdates: userData.preferences.emailUpdates,
+            pushNotifications: userData.preferences.pushNotifications,
+            reminderTime: userData.preferences.reminderTime,
+          });
+        } else {
+          setError("Failed to load profile data.");
+        }
+      } catch (err: any) {
+        console.error("Error fetching user profile:", err);
+        setError(err.response?.data?.message || "Failed to load profile. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -144,18 +143,6 @@ export default function Profile() {
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleInterestToggle = (interest: string) => {
-    setEditProfile((prev) => {
-      const selected = prev.interests.includes(interest)
-        ? prev.interests.filter((i) => i !== interest)
-        : [...prev.interests, interest];
-      return {
-        ...prev,
-        interests: selected,
-      };
-    });
   };
 
   const handleAvatarClick = () => {
@@ -179,22 +166,45 @@ export default function Profile() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    // Would call an API, then update the live user object
-    setTimeout(() => {
-      setUser((u) => ({
-        ...u,
+    setError(null);
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        setError("No access token found. Please log in again.");
+        setSaving(false);
+        return;
+      }
+
+      // Call API to update profile
+      const response = await api.put('/auth/me', {
         firstName: editProfile.firstName,
         lastName: editProfile.lastName,
         university: editProfile.university,
-        bio: editProfile.bio,
-        interests: [...editProfile.interests],
         avatar: editProfile.avatar,
-      }));
+      });
+
+      if (response.data?.success && response.data?.data?.user) {
+        const userData = mapApiUserToUserProfile(response.data.data.user);
+        setUser(userData);
+        
+        // Update editable state with the response data
+        setEditProfile({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          university: userData.university,
+          avatar: userData.avatar || "",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error saving profile:", err);
+      setError(err.response?.data?.message || "Failed to save profile. Please try again.");
+    } finally {
       setSaving(false);
-    }, 800);
+    }
   };
 
   // Preferences handlers
@@ -212,21 +222,45 @@ export default function Profile() {
     }));
   };
 
-  const handleSavePreferences = (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingPrefs(true);
-    // Would call an API, then update the user preferences in user object
-    setTimeout(() => {
-      setUser((u) => ({
-        ...u,
-        preferences: {
+    setError(null);
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        setError("No access token found. Please log in again.");
+        setSavingPrefs(false);
+        return;
+      }
+
+      // Call API to update preferences (send as notificationPreferences if that's what backend expects)
+      const response = await api.put('/auth/me', {
+        notificationPreferences: {
           emailUpdates: prefState.emailUpdates,
           pushNotifications: prefState.pushNotifications,
           reminderTime: prefState.reminderTime,
         },
-      }));
+      });
+
+      if (response.data?.success && response.data?.data?.user) {
+        const userData = mapApiUserToUserProfile(response.data.data.user);
+        setUser(userData);
+        
+        // Update preferences state with the response data
+        setPrefState({
+          emailUpdates: userData.preferences.emailUpdates,
+          pushNotifications: userData.preferences.pushNotifications,
+          reminderTime: userData.preferences.reminderTime,
+        });
+      }
+    } catch (err: any) {
+      console.error("Error saving preferences:", err);
+      setError(err.response?.data?.message || "Failed to save preferences. Please try again.");
+    } finally {
       setSavingPrefs(false);
-    }, 800);
+    }
   };
 
   // Security password fields and handlers
@@ -240,7 +274,7 @@ export default function Profile() {
     setSecuritySuccess(null);
   };
 
-  // --- Robust API submit handler for password change ---
+  // --- API submit handler for password change ---
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setSecurityErrors(null);
@@ -264,53 +298,99 @@ export default function Profile() {
     setUpdatingPassword(true);
 
     try {
-      // Try to use your real API here!
-      // await changePassword({ currentPassword, newPassword });
-
-      // Simulate success (remove next line and uncomment above when API available)
-      throw new Error("Demo mode - no API");
-
-      // On success, reset fields & show generic notification
-      // setSecuritySuccess("Password updated successfully.");
-      // setPasswordState({
-      //   currentPassword: "",
-      //   newPassword: "",
-      //   confirmNewPassword: "",
-      // });
-      // setTimeout(() => setSecuritySuccess(null), 2000); // Optionally auto-clear success message
-    } catch (error) {
-      // Fallback: Demo mode or API failed
-      // eslint-disable-next-line no-console
-      console.error("[Password Update] Error:", error);
-
-      setTimeout(() => {
+      const token = getAccessToken();
+      if (!token) {
+        setSecurityErrors("No access token found. Please log in again.");
         setUpdatingPassword(false);
-        setSecuritySuccess("Password updated! (Demo Mode)");
+        return;
+      }
+
+      // Call password change API
+      const response = await api.post('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+
+      if (response.data?.success) {
+        setSecuritySuccess(response.data.message || "Password changed successfully. Please login again with your new password.");
         setPasswordState({
           currentPassword: "",
           newPassword: "",
           confirmNewPassword: "",
         });
-        // Optionally: auto-clear message after 2s
-        // setTimeout(() => setSecuritySuccess(null), 2000);
-        // You could use a toast here instead: window.alert("Password updated! (Demo Mode)");
-      }, 1000);
-      return;
+      }
+    } catch (error: any) {
+      console.error("[Password Update] Error:", error);
+      
+      // Handle error response with errors array
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const errorMessages = error.response.data.errors
+          .map((err: any) => err.message || "Unknown error")
+          .join(". ");
+        setSecurityErrors(errorMessages);
+      } else if (error.response?.data?.message) {
+        setSecurityErrors(error.response.data.message);
+      } else {
+        setSecurityErrors("Failed to change password. Please try again.");
+      }
+    } finally {
+      setUpdatingPassword(false);
     }
-    // This will not be reached in demo mode
-    setUpdatingPassword(false);
-    setSecuritySuccess("Password updated successfully.");
-    setPasswordState({
-      currentPassword: "",
-      newPassword: "",
-      confirmNewPassword: "",
-    });
-    // Optionally auto-clear message:
-    // setTimeout(() => setSecuritySuccess(null), 2000);
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="px-6 py-10 max-w-3xl mx-auto space-y-8">
+        <h1 className="text-3xl font-semibold text-gray-900 mb-4">
+          Account Settings
+        </h1>
+        <div className="bg-white rounded-xl shadow p-8 min-h-[16rem] flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && !user) {
+    return (
+      <div className="px-6 py-10 max-w-3xl mx-auto space-y-8">
+        <h1 className="text-3xl font-semibold text-gray-900 mb-4">
+          Account Settings
+        </h1>
+        <div className="bg-white rounded-xl shadow p-8 min-h-[16rem] flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user data, don't render
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="px-6 py-10 max-w-3xl mx-auto space-y-8">
+      {/* Error message banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Header */}
       <h1 className="text-3xl font-semibold text-gray-900 mb-4">
         Account Settings
@@ -338,14 +418,15 @@ export default function Profile() {
       <div className="bg-white rounded-xl shadow p-8 min-h-[16rem]">
         {/* Profile Card Header: Avatar + Name + Email */}
         <div className="flex items-center gap-5 mb-8">
-          <div className="relative w-20 h-20">
+          {/* <div className="relative w-20 h-20">
             <img
               src={editProfile.avatar}
               alt="User avatar"
               className="w-20 h-20 rounded-full shadow object-cover"
-            />
+            /> */}
+            
             {/* Camera overlay */}
-            <button
+            {/* <button
               type="button"
               aria-label="Edit avatar"
               className="absolute right-1 bottom-1 bg-primary rounded-full p-1 shadow-md border-2 border-white hover:bg-primary/90 transition"
@@ -353,15 +434,15 @@ export default function Profile() {
               tabIndex={0}
             >
               <CameraIcon />
-            </button>
-            <input
+            </button> */}
+            {/* <input
               ref={avatarInputRef}
               type="file"
               accept="image/*"
               className="hidden"
               onChange={handleAvatarChange}
             />
-          </div>
+          </div> */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
               {user.firstName} {user.lastName}
@@ -416,90 +497,6 @@ export default function Profile() {
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-1">
-                Bio <span className="text-gray-400">(optional)</span>
-              </label>
-              <textarea
-                name="bio"
-                value={editProfile.bio}
-                onChange={handleInputChange}
-                className="w-full resize-none border rounded-lg px-3 py-2 min-h-[64px]"
-                maxLength={300}
-                rows={3}
-                placeholder="Tell us something about yourself"
-              />
-            </div>
-            {/* Interests selector */}
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Interests
-              </label>
-              {/* Tag list of current interests - fully editable */}
-              <div className="flex flex-wrap gap-2 mb-2">
-                {editProfile.interests.map((tag) => (
-                  <span
-                    key={tag}
-                    className="bg-indigo-100 text-indigo-700 flex items-center gap-1 pr-1 rounded-full text-sm py-1 pl-3"
-                  >
-                    <span className="truncate">{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveInterest(tag)}
-                      className="ml-0.5 hover:bg-indigo-200 rounded-full transition p-0.5"
-                      aria-label={`Remove ${tag}`}
-                      tabIndex={0}
-                    >
-                      <X size={16} className="text-indigo-700" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              {/* Input area for new interest */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newInterest}
-                  onChange={(e) => setNewInterest(e.target.value)}
-                  onKeyDown={handleInterestInputKeyDown}
-                  placeholder="Add new interest..."
-                  className="border rounded-md px-3 py-1 text-sm"
-                  maxLength={48}
-                />
-                <button
-                  type="button"
-                  className="border text-indigo-700 border-indigo-300 hover:bg-indigo-50 rounded-md px-3 py-1 text-sm transition"
-                  onClick={handleAddInterest}
-                >
-                  Add
-                </button>
-              </div>
-              {/* OPTIONAL: Legacy universe toggles (retain to allow easy picking) */}
-              <div className="flex flex-wrap gap-1 mt-3">
-                {ALL_INTERESTS.filter(
-                  (interest) =>
-                    // Only show if not already selected (case-insensitive)
-                    !editProfile.interests.some(
-                      (t) => t.toLowerCase() === interest.toLowerCase()
-                    )
-                ).map((interest) => (
-                  <button
-                    type="button"
-                    key={interest}
-                    className="px-2 py-1 rounded-full border border-indigo-200 bg-white text-indigo-600 text-sm hover:bg-indigo-50 transition"
-                    onClick={() => {
-                      setEditProfile((prev) => ({
-                        ...prev,
-                        interests: [...prev.interests, interest],
-                      }));
-                    }}
-                    tabIndex={0}
-                  >
-                    + {interest}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="pt-2">
               <button
                 type="submit"
@@ -512,6 +509,7 @@ export default function Profile() {
           </form>
         )}
 
+{/*         
         {activeTab === "preferences" && (
           <form className="space-y-6 max-w-md mx-auto py-2" onSubmit={handleSavePreferences}>
             <div>
@@ -587,6 +585,7 @@ export default function Profile() {
             </div>
           </form>
         )}
+         */}
 
         {activeTab === "security" && (
           <form
