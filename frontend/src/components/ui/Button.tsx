@@ -28,6 +28,7 @@ const baseStyles = `
   inline-flex items-center justify-center font-medium rounded-lg transition-all
   focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
   disabled:opacity-50 disabled:cursor-not-allowed
+  active:scale-95
 `;
 
 const variants: Record<ButtonVariant, string> = {
@@ -68,14 +69,6 @@ export default function Button<E extends React.ElementType = "button">({
   ]
     .filter(Boolean)
     .join(" ");
-  ...props
-}: ButtonProps) {
-  const baseStyles = `
-    inline-flex items-center justify-center font-medium rounded-lg transition-all
-    focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-    disabled:opacity-50 disabled:cursor-not-allowed
-    active:scale-95 
-  `;
 
   const componentProps = {
     ...rest,
@@ -93,11 +86,6 @@ export default function Button<E extends React.ElementType = "button">({
     nonButtonProps["aria-disabled"] = true;
     nonButtonProps.role = nonButtonProps.role ?? "button";
   }
-
-  const isButtonDisabled = props.disabled || isLoading;
-  const disabledClasses = isButtonDisabled
-    ? "opacity-50 cursor-not-allowed pointer-events-none"
-    : "";
 
   return (
     <Component {...componentProps}>

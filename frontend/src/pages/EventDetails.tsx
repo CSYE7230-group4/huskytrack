@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, ArrowLeft } from "lucide-react";
+import { Users, ArrowLeft } from "lucide-react";
 import api from "../services/api";
 import { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
@@ -360,4 +360,5 @@ export default function EventDetails() {
       </div>
     </div>
   );
+}
 }
