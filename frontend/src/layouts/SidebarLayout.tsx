@@ -1,6 +1,7 @@
 // src/layouts/SidebarLayout.tsx
 import { NavLink } from "react-router-dom";
 import { Menu, Home, Calendar, User, ClipboardList, X } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface SidebarLayoutProps {
   isOpen: boolean;
@@ -9,6 +10,8 @@ interface SidebarLayoutProps {
 }
 
 export default function SidebarLayout({ isOpen, onClose, onToggle }: SidebarLayoutProps) {
+  const { hasRole } = useAuth();
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -90,18 +93,20 @@ export default function SidebarLayout({ isOpen, onClose, onToggle }: SidebarLayo
           Events
         </NavLink>
 
-        {/* Organizer Dashboard — NEW */}
-        <NavLink
-          to="/app/organizer"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
-              isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
-            }`
-          }
-        >
-          <ClipboardList className="w-4 h-4" />
-          Organizer
-        </NavLink>
+        {/* Organizer Dashboard — Only visible for ORGANIZER and ADMIN */}
+        {hasRole(['ORGANIZER', 'ADMIN']) && (
+          <NavLink
+            to="/app/organizer"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+                isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+              }`
+            }
+          >
+            <ClipboardList className="w-4 h-4" />
+            Organizer
+          </NavLink>
+        )}
 
         {/* Profile */}
         <NavLink
