@@ -116,7 +116,7 @@ export default function MainLayout() {
             {user && (
               <div className="flex items-center gap-4">
                 {/* Optional: Organizer Shortcut */}
-                <NavLink
+                {/* <NavLink
                   to="/app/organizer"
                   className={({ isActive }) =>
                     `text-sm px-3 py-2 rounded-lg transition ${
@@ -127,7 +127,7 @@ export default function MainLayout() {
                   }
                 >
                   Organizer
-                </NavLink>
+                </NavLink> */}
 
                 {/* Notification Bell with Center */}
                 <div ref={bellRef} className="relative inline-block">
