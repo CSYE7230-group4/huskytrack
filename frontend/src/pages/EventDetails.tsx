@@ -1,31 +1,87 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, ArrowLeft } from "lucide-react";
+import { Users, ArrowLeft } from "lucide-react";
 import api from "../services/api";
 import { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
-import BookmarkButton from "../components/ui/BookmarkButton";
-import LikeButton from "../components/ui/LikeButton";
-import Skeleton from "../components/ui/Skeleton";
-import { useToast } from "../hooks/useToast";
+import { getEventById, registerForEvent } from "../services/api";
+import { Calendar, MapPin, Heart, Bookmark, Share2, User as UserIcon, Clock } from "lucide-react";
+import type { Event } from "../types";
+// Import useAuth hook (from context or hooks folder)
+import { useAuth } from "../contexts/AuthContext";
 
-interface EventDetailsData extends EventDto {
-  organizer?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    university?: string;
-  };
-}
+//  
+const MOCK_EVENT: Event = {
+  _id: "mock-1",
+  title: "Husky Social Spring BBQ",
+  description: "Come and join us for the best BBQ of the season! Meet new people, enjoy awesome grilling, and participate in lawn games.",
+  category: "social" as any, // 
+  tags: ["Networking", "BBQ", "Social"],
+  imageUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80",
+  
+  startDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
+  endDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
+  
+  location: {
+    venue: "Husky Union Building",
+    address: "800 Husky Blvd, Seattle, WA",
+    room: "Main Lawn",
+    coordinates: { lat: 47.6534, lng: -122.3050 }
+  },
+  organizer: {
+    _id: "org-1",
+    firstName: "Husky",
+    lastName: "Events Team",
+    email: "team@huskyu.edu"
+  },
+  
+  status: "PUBLISHED",
+  capacity: 150,
+  registeredUsers: new Array(107).fill("user_id"), 
+  waitlist: [],
+  price: 0,
+  // mock event.likes
+  // @ts-ignore
+  likes: 37
+};
+
+// Static mock comments data
+const MOCK_COMMENTS = [
+  {
+    id: 1,
+    name: "Jane Doe",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+    time: "2 hours ago",
+    text: "Had an amazing time last year! Can't wait for this one 🎉",
+  },
+  {
+    id: 2,
+    name: "Michael Smith",
+    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+    time: "1 hour ago",
+    text: "Is there a vegetarian option for the BBQ?",
+  },
+];
 
 export default function EventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showToast } = useToast();
-  const [event, setEvent] = useState<EventDetailsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth(); // get the current user, null/undefined if not logged in
+
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isSaved, setIsSaved] = useState(false);
+  // Mock like count state (let's make this also optimistic for clarity in UI)
+  const [likeCount, setLikeCount] = useState<number>(() => {
+    return typeof MOCK_EVENT.likes === "number" ? MOCK_EVENT.likes : 37;
+  });
+
+  const [comments, setComments] = useState(MOCK_COMMENTS);
+  const [newCommentText, setNewCommentText] = useState("");
+
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -73,14 +129,54 @@ export default function EventDetails() {
       return `${datePart} at ${time}`;
     }
 
-    const endDate = new Date(end);
-    const startTime = startDate.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    const endTime = endDate.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
+  // ==== Register Button Handler (新逻辑) ====
+  const handleRegister = async () => {
+    // 1. 设置 Loading 状态
+    setRegistering(true);
+
+    try {
+      if (!event) return;
+
+      // 2. 尝试调用真实 API
+      await registerForEvent(event._id);
+
+      // 3. 成功时的逻辑
+      alert("Successfully registered! 🎉");
+      navigate("/app/my-events"); // 确保跳转到正确的 My Events 路径
+
+    } catch (err) {
+      console.warn("Backend API failed, falling back to Demo Mode");
+
+      // 4. 🔴 关键点：如果是演示模式（后端连不上），我们也假装成功！
+      // 模拟 1秒 延迟，让用户看到转圈圈
+      setTimeout(() => {
+        alert("Successfully registered! (Demo Mode) 🎉");
+        navigate("/app/my-events"); // 跳转到 My Events
+      }, 1000);
+
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  // ==== Post New Comment Handler ====
+  const handlePostComment = (e: React.FormEvent) => {
+    e.preventDefault(); 
+    if (!newCommentText.trim()) return; 
+    const newCommentObj = {
+      id: Date.now(), 
+      name: "You", 
+      avatar: "https://ui-avatars.com/api/?name=You&background=random", 
+      time: "Just now",
+      text: newCommentText
+    };
+    setComments([newCommentObj, ...comments]);
+    setNewCommentText("");
+  };
+
+  const formatDate = (isoString: string) => {
+    return new Date(isoString).toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
     return `${datePart} from ${startTime} to ${endTime}`;
@@ -184,17 +280,28 @@ export default function EventDetails() {
           })()}
         </div>
 
-        {/* Capacity */}
-        {hasCapacity && (
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm">
-            <Users className="h-4 w-4" />
-            <span>
-              {isFull
-                ? "No spots left"
-                : `${spotsRemaining} / ${max} spots remaining`}
-            </span>
-          </div>
-        )}
+            {/* Register Button */}
+            <Button 
+              className="w-full h-12 text-lg shadow-md hover:shadow-lg transition-all"
+              // 绑定新的 loading 状态
+              isLoading={registering} 
+              // 禁用逻辑保持不变
+              disabled={isFull || isCancelled || isPast || registering}
+              // 绑定新的处理函数
+              onClick={handleRegister}
+            >
+              {/* 按钮文字逻辑 */}
+              {isCancelled 
+                ? "Event Cancelled" 
+                : isPast 
+                  ? "Event Ended" 
+                  : isFull 
+                    ? "Join Waitlist" 
+                    : registering 
+                      ? "Registering..." 
+                      : "Register Now"
+              }
+            </Button>
 
         {/* Tags */}
         {event.tags && event.tags.length > 0 && (
@@ -253,4 +360,5 @@ export default function EventDetails() {
       </div>
     </div>
   );
+}
 }

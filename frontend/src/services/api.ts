@@ -2,7 +2,7 @@
  * API Service Layer
  * Centralized Axios instance with interceptors for authentication and error handling
  */
-import { Event } from '../types';
+import { Event, Registration } from '../types';
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
   getAccessToken,
@@ -14,6 +14,7 @@ import {
   isTokenExpired,
 } from '../utils/tokenStorage';
 import { createApiError, isUnauthorizedError } from '../utils/apiErrors';
+import type { UserProfile, NotificationPreferences, PasswordChangePayload } from '../types';
 
 // API base URL - adjust based on your backend configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
@@ -77,7 +78,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     throw new Error('Failed to refresh token');
   } catch (error: any) {
-    // Refresh failed - clear tokens and logout
     clearTokens();
     throw error;
   }
@@ -102,7 +102,6 @@ api.interceptors.request.use(
             config.headers.Authorization = `Bearer ${newToken}`;
           }
         } catch (error) {
-          // Refresh failed, continue with existing token
           console.error('Proactive token refresh failed:', error);
         } finally {
           isRefreshing = false;
@@ -156,11 +155,9 @@ api.interceptors.response.use(
       // Check if we have a refresh token
       const refreshToken = getRefreshToken();
       if (!refreshToken || isTokenExpired(refreshToken)) {
-        // No refresh token or it's expired - clear everything
         clearTokens();
         processQueue(new Error('Refresh token expired'), null);
-        
-        // Redirect to login (will be handled by AuthContext)
+
         window.location.href = '/auth/login';
         return Promise.reject(createApiError(error));
       }
@@ -179,11 +176,9 @@ api.interceptors.response.use(
         }
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - clear tokens and logout
         processQueue(refreshError, null);
         clearTokens();
-        
-        // Redirect to login
+
         window.location.href = '/auth/login';
         return Promise.reject(createApiError(refreshError));
       } finally {
@@ -211,29 +206,93 @@ export const retryRequest = async <T>(
     return await fn();
   } catch (error: any) {
     if (retries > 0 && !isUnauthorizedError(error)) {
-      // Don't retry on 401 errors (handled by interceptor)
       await new Promise((resolve) => setTimeout(resolve, delay));
       return retryRequest(fn, retries - 1, delay * 2); // Exponential backoff
     }
     throw error;
   }
 };
+
 /**
  * Event API Services
  */
-
-
 export const getEvents = async (params?: any): Promise<Event[]> => {
   const response = await api.get('/events', { params });
   return response.data.data || response.data;
 };
 
 export const getEventById = async (id: string): Promise<Event> => {
-
   const response = await api.get(`/events/${id}`);
-  
+  return response.data.data || response.data;
+};
 
-  return response.data.data || response.data; 
+// --- Registration API Services (Task 3.2) ---
+
+/**
+ * Register for an event
+ */
+export const registerForEvent = async (eventId: string) => {
+  const response = await api.post(`/events/${eventId}/register`);
+  return response.data;
+};
+
+/**
+ * Cancel a registration
+ */
+export const cancelRegistration = async (registrationId: string) => {
+  const response = await api.delete(`/registrations/${registrationId}`);
+  return response.data;
+};
+
+/**
+ * Get user's registrations (My Events)
+ */
+export const getMyRegistrations = async (
+  params?: any
+): Promise<import('../types').Registration[]> => {
+  const response = await api.get('/registrations/me', { params });
+  return response.data.data || response.data;
+};
+
+// --- Profile & Settings API (Task 3.5) ---
+
+/**
+ * Update User Profile (Name, University, Bio, Interests)
+ */
+export const updateProfile = async (data: Partial<UserProfile>) => {
+  const response = await api.put('/users/profile', data);
+  return response.data.data || response.data;
+};
+
+/**
+ * Update Notification Preferences
+ */
+export const updatePreferences = async (prefs: NotificationPreferences) => {
+  const response = await api.put('/users/preferences', prefs);
+  return response.data.data || response.data;
+};
+
+/**
+ * Change Password
+ */
+export const changePassword = async (data: PasswordChangePayload) => {
+  const response = await api.put('/users/password', data);
+  return response.data;
+};
+
+/**
+ * Upload Avatar
+ * (Simulate upload for now if backend Task 2.8 is not fully integrated)
+ */
+export const uploadAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  // Assuming Task 2.8 created this endpoint
+  const response = await api.post('/upload/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.url; // Assuming backend returns the image URL
 };
 
 export default api;
