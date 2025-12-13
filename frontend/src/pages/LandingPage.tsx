@@ -1,8 +1,10 @@
 // src/pages/LandingPage.tsx
 import { Link } from "react-router-dom";
 import Button from "../components/ui/Button";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="min-h-screen bg-white flex flex-col">
 
@@ -27,13 +29,21 @@ export default function LandingPage() {
             and campus gatherings.
           </p>
 
-          <Link to="/auth/login">
-            <Button className="px-8 py-3 text-lg">Explore</Button>
-          </Link>
-          
-          <Link to="/app">
-            <Button className="px-8 py-3 text-lg">Dashboard</Button>
-          </Link>
+          <div className="flex flex-row gap-4">
+            <Link to="/app/events">
+              <Button className="px-8 py-3 text-lg">Explore</Button>
+            </Link>
+            
+            {isAuthenticated ? (
+              <Link to="/app">
+                <Button className="px-8 py-3 text-lg">Dashboard</Button>
+              </Link>
+            ) : (
+              <Link to="/auth/login">
+                <Button className="px-8 py-3 text-lg">Login</Button>
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
