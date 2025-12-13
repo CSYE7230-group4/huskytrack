@@ -7,10 +7,12 @@ import EventForm from "../components/events/EventForm";
 import { createEvent } from "../api/events";
 import { EventFormValues } from "../types/events";
 import { useToast } from "../hooks/useToast";
+import { useNotificationRefresh } from "../contexts/NotificationContext";
 
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { refreshNotifications } = useNotificationRefresh();
 
   const handleSubmit = async (
     values: EventFormValues,
@@ -20,6 +22,15 @@ const CreateEvent: React.FC = () => {
       const status = action === "draft" ? "draft" : "published";
 
       await createEvent(values, status);
+
+      // Refresh notifications if event was published (creates notification)
+      if (action === "publish") {
+        // Small delay to ensure notification is committed to database
+        setTimeout(async () => {
+          console.log("[CreateEvent] Refreshing notifications after publish...");
+          await refreshNotifications();
+        }, 500);
+      }
 
       showToast("Event created successfully!", "success");
 

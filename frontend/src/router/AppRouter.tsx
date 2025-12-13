@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
-import { AuthProvider } from "../contexts/AuthContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import PrivateRoute from "../components/PrivateRoute";
 
 // Layouts
@@ -11,8 +11,10 @@ import LandingPage from "../pages/LandingPage";
 import Dashboard from "../pages/Dashboard";
 import Events from "../pages/Events";
 import EventDetails from "../pages/EventDetails";
+import MyBookmarks from "../pages/MyBookmarks";
 import Profile from "../pages/Profile";
 import UiGuide from "../pages/UiGuide";
+import MyEvents from "../pages/MyEvents"; // <-- Added import
 
 // Auth Pages
 import Login from "../pages/Login";
@@ -21,11 +23,26 @@ import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import ResetSuccess from "../pages/ResetSuccess";
 
-// Event Create / Edit (Task 2.7)
+// Event Create / Edit
 import CreateEvent from "../pages/CreateEvent";
 import EditEvent from "../pages/EditEvent";
 
 import OrganizerDashboard from "../pages/OrganizerDashboard";
+
+// Component to handle profile redirect based on auth status
+function ProfileRedirect() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return null; // or a loading spinner if desired
+  }
+  
+  if (isAuthenticated) {
+    return <Navigate to="/app/profile" replace />;
+  }
+  
+  return <Navigate to="/auth/login" state={{ from: '/profile' }} replace />;
+}
 
 const router = createBrowserRouter([
   // ---------------------------------------
@@ -68,16 +85,20 @@ const router = createBrowserRouter([
       // EVENTS
       { path: "events", element: <Events /> },
       { path: "events/new", element: <CreateEvent /> },
+      { path: "events/create", element: <CreateEvent /> }, // Alias for backward compatibility
       { path: "events/:id", element: <EventDetails /> },
       { path: "events/:id/edit", element: <EditEvent /> },
+      { path: "bookmarks", element: <MyBookmarks /> },
 
       // PROFILE
       { path: "profile", element: <Profile /> },
 
       // UI Guide
       { path: "ui-guide", element: <UiGuide /> },
-      
-      {  path: "organizer",  element: <OrganizerDashboard />,},
+
+      { path: "organizer", element: <OrganizerDashboard /> },
+      // MY EVENTS (Protected, inside /app)
+      { path: "my-events", element: <MyEvents /> },
     ],
   },
 
@@ -86,7 +107,7 @@ const router = createBrowserRouter([
   // ---------------------------------------
   {
     path: "/profile",
-    element: <Navigate to="/app/profile" replace />,
+    element: <ProfileRedirect />,
   },
 
   // ---------------------------------------

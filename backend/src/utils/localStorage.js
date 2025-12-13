@@ -77,7 +77,7 @@ const saveLocally = async (fileBuffer, options = {}) => {
     await fs.writeFile(filePath, fileBuffer);
 
     // Generate public URL
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const publicUrl = `${baseUrl}/uploads/images/${finalFilename}`;
 
     return {
@@ -133,7 +133,7 @@ const deleteLocally = async (filename) => {
  */
 const extractFilenameFromUrl = (url) => {
   try {
-    // Extract filename from URL like http://localhost:5000/uploads/images/filename.webp
+    // Extract filename from URL like http://localhost:5173/uploads/images/filename.webp
     const urlParts = url.split('/');
     return urlParts[urlParts.length - 1];
   } catch (error) {
@@ -195,7 +195,7 @@ const getFileInfo = async (filename) => {
     }
 
     const stats = await fs.stat(filePath);
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
     return {
       filename: sanitizedFilename,

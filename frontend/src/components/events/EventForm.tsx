@@ -71,7 +71,8 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(
-    initialValues?.imageUrl
+    initialValues?.imageUrl ?? undefined
+
   );
 
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(
@@ -89,7 +90,7 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
   useEffect(() => {
     if (initialValues) {
       setValues(initialValues);
-      setImagePreview(initialValues.imageUrl);
+      setImagePreview(initialValues.imageUrl ?? undefined);
       setLastSavedSnapshot(JSON.stringify(initialValues));
     }
   }, [initialValues]);
@@ -202,11 +203,37 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
       newErrors.endDate = "End required.";
 
     if (values.startDate && values.startTime && values.endDate && values.endTime) {
-      const start = new Date(`${values.startDate}T${values.startTime}`);
-      const end = new Date(`${values.endDate}T${values.endTime}`);
+      try {
+        // Parse dates consistently with backend
+        // dateStr is "YYYY-MM-DD", timeStr is "HH:mm"
+        const parseDateTime = (dateStr: string, timeStr: string): Date => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          return new Date(year, month - 1, day, hours, minutes, 0, 0);
+        };
+        
+        const start = parseDateTime(values.startDate, values.startTime);
+        const end = parseDateTime(values.endDate, values.endTime);
 
-      if (end <= start)
-        newErrors.startEnd = "End must be after start.";
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          newErrors.startEnd = "Invalid date or time format.";
+        } else if (end.getTime() <= start.getTime()) {
+          newErrors.startEnd = "End must be after start.";
+        } else {
+          // Only check minimum duration (30 minutes) if event is on the same date
+          // For multi-day events, we only require that end date is after start date
+          const isSameDate = values.startDate === values.endDate;
+          if (isSameDate) {
+            const durationMs = end.getTime() - start.getTime();
+            const minDurationMs = 30 * 60 * 1000;
+            if (durationMs < minDurationMs) {
+              newErrors.startEnd = "Event must be at least 30 minutes long.";
+            }
+          }
+        }
+      } catch (err) {
+        newErrors.startEnd = "Invalid date or time format.";
+      }
     }
 
     if (!values.location.venue.trim())
@@ -226,7 +253,7 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
     setErrors(v);
 
     if (Object.keys(v).length > 0) {
-      showToast({ type: "error", message: "Fix errors before submitting." });
+      showToast("Fix errors before submitting.", "error");
       return;
     }
 
@@ -237,20 +264,16 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
 
       setLastSavedSnapshot(JSON.stringify(values));
 
-      showToast({
-        type: "success",
-        message:
-          action === "draft"
-            ? "Draft saved."
-            : mode === "create"
-            ? "Event published."
-            : "Event updated.",
-      });
+      showToast(
+        action === "draft"
+          ? "Draft saved."
+          : mode === "create"
+          ? "Event published."
+          : "Event updated.",
+        "success"
+      );
     } catch (err: any) {
-      showToast({
-        type: "error",
-        message: err?.message || "Something went wrong.",
-      });
+      showToast(err?.message || "Something went wrong.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -319,9 +342,9 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
             <label className="block text-sm font-medium mb-1">Tags</label>
 
             <div className="flex flex-wrap gap-2 mb-2">
-              {values.tags.map((tag) => (
+              {values.tags.map((tag, idx) => (
                 <span
-                  key={tag}
+                  key={`${tag}-${idx}`}
                   className="px-3 py-1 text-xs rounded-full bg-primary/5 text-primary flex items-center gap-1"
                 >
                   {tag}

@@ -13,6 +13,11 @@ const {
   validateGetEvents,
   validateSearchEvents
 } = require('../middleware/eventValidation');
+const { getUploadMiddleware } = require('../config/multer');
+const { parseFormDataFields } = require('../middleware/parseFormData');
+
+// Get appropriate upload middleware based on storage type
+const upload = getUploadMiddleware();
 
 // Public routes (no authentication required)
 
@@ -32,6 +37,8 @@ router.post(
   '/',
   authenticate,
   authorize('ORGANIZER', 'ADMIN'),
+  upload.single('image'), // Handle optional image upload
+  parseFormDataFields, // Parse JSON fields from FormData
   validateCreateEvent,
   eventController.createEvent
 );
@@ -70,6 +77,14 @@ router.get(
   eventController.canUserRegister
 );
 
+// Like routes (must be before /:id)
+const likeController = require('../controllers/likeController');
+router.post('/:id/like', authenticate, likeController.toggleLike);
+router.get('/:id/like/check', authenticate, likeController.checkLike);
+router.get('/:id/likes/status', authenticate, likeController.checkLike); // Alias for /check
+router.get('/:id/likes/count', likeController.getLikeCount);
+router.get('/:id/likes', likeController.getEventLikes);
+
 // Get all events with filters
 router.get('/', validateGetEvents, optionalAuth, eventController.getEvents);
 
@@ -81,6 +96,8 @@ router.put(
   '/:id',
   authenticate,
   authorize('ORGANIZER', 'ADMIN'),
+  upload.single('image'), // Handle optional image upload
+  parseFormDataFields, // Parse JSON fields from FormData
   validateUpdateEvent,
   eventController.updateEvent
 );

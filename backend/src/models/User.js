@@ -6,6 +6,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { NotificationPreferencesSchema } = require('./NotificationPreferences');
 
 // User roles enum
 const USER_ROLES = {
@@ -84,6 +85,11 @@ const userSchema = new mongoose.Schema({
     // Last login tracking
     lastLogin: {
         type: Date
+    },
+    // Notification preferences
+    notificationPreferences: {
+        type: NotificationPreferencesSchema,
+        default: () => ({})
     }
 }, {
     timestamps: true,
