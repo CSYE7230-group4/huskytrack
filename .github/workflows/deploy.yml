@@ -3,7 +3,7 @@ name: Deployment to EC2 (main)
 on:
   push:
     branches:
-      - main
+      - unstable
 
 jobs:
   build:
