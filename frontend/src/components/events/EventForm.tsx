@@ -71,7 +71,8 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(
-    initialValues?.imageUrl
+    initialValues?.imageUrl ?? undefined
+
   );
 
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(
@@ -89,7 +90,7 @@ export default function EventForm({ mode, initialValues, onSubmit }: Props) {
   useEffect(() => {
     if (initialValues) {
       setValues(initialValues);
-      setImagePreview(initialValues.imageUrl);
+      setImagePreview(initialValues.imageUrl ?? undefined);
       setLastSavedSnapshot(JSON.stringify(initialValues));
     }
   }, [initialValues]);

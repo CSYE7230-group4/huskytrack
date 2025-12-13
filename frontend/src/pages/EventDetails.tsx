@@ -1,14 +1,32 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Users, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+
 import api from "../services/api";
-import { EventDto } from "../components/ui/EventCard";
 import Button from "../components/ui/Button";
-import { getEventById, registerForEvent, cancelRegistration, getMyRegistrations } from "../services/api";
-import { Calendar, MapPin, Heart, Bookmark, Share2, User as UserIcon, Clock } from "lucide-react";
+import { registerForEvent, cancelRegistration, getMyRegistrations } from "../services/api";
+
+import { Calendar, MapPin } from "lucide-react";
+
 import type { Event, Registration } from "../types";
+
 // Import useAuth hook (from context or hooks folder)
 import { useAuth } from "../contexts/AuthContext";
+
+type EventDetailsView = Event & {
+  bannerImageUrl?: string;
+  maxRegistrations?: number;
+  currentRegistrations?: number;
+  location?: Event["location"] & {
+    name?: string;
+    city?: string;
+    isVirtual?: boolean;
+  };
+  organizer?: Event["organizer"] & {
+    university?: string;
+  };
+};
+
 
 //  
 const MOCK_EVENT: Event = {
@@ -67,8 +85,9 @@ export default function EventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth(); // get the current user, null/undefined if not logged in
-
   const [event, setEvent] = useState<Event | null>(null);
+
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -284,9 +303,20 @@ export default function EventDetails() {
     );
   }
 
-  const image = event.bannerImageUrl || event.imageUrl || "/placeholder-event.png";
-  const max = event.capacity || event.maxRegistrations || 0;
-  const current = event.registeredUsers?.length || event.currentRegistrations || 0;
+
+  const viewEvent = event as EventDetailsView;
+
+const image =
+  viewEvent.bannerImageUrl ||
+  viewEvent.imageUrl ||
+  "/placeholder-event.png";
+
+const max = viewEvent.capacity || viewEvent.maxRegistrations || 0;
+const current =
+  viewEvent.registeredUsers?.length ||
+  viewEvent.currentRegistrations ||
+  0;
+
   const hasCapacity = max > 0;
   const spotsRemaining = hasCapacity ? Math.max(max - current, 0) : null;
   const isFull = hasCapacity && spotsRemaining === 0;
@@ -343,12 +373,13 @@ export default function EventDetails() {
           )}
           {event.location && (() => {
             const locationText =
-              typeof event.location === "string"
-                ? event.location
-                : event.location.name ||
-                  event.location.address ||
-                  event.location.city ||
-                  (event.location.isVirtual ? "Online event" : "");
+              typeof viewEvent.location === "string"
+                ? viewEvent.location
+                : viewEvent.location?.name ||
+                  viewEvent.location?.address ||
+                  viewEvent.location?.city ||
+                  (viewEvent.location?.isVirtual ? "Online event" : "");
+
             if (!locationText) return null;
             return (
               <div className="inline-flex items-center gap-2">
@@ -398,7 +429,7 @@ export default function EventDetails() {
         {/* Tags */}
         {event.tags && event.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {event.tags.map((tag) => (
+            {event.tags.map((tag: string) => (
               <span
                 key={tag}
                 className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm"
@@ -426,7 +457,7 @@ export default function EventDetails() {
           <p className="text-sm text-gray-600">
             <strong className="text-gray-900">Organizer:</strong>{" "}
             {event.organizer.firstName} {event.organizer.lastName}
-            {event.organizer.university && ` • ${event.organizer.university}`}
+            {viewEvent.organizer?.university && ` • ${viewEvent.organizer.university}`}
           </p>
         </div>
       )}

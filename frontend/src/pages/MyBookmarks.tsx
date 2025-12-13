@@ -114,11 +114,11 @@ export default function MyBookmarks() {
           <div className="flex-1">
             <SearchBar
               value={searchInput}
-              onChange={handleSearchChange}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search bookmarks..."
             />
           </div>
-          <ViewToggle viewMode={viewMode} onViewChange={setViewMode} />
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
         </div>
 
         {/* Tags Filter */}

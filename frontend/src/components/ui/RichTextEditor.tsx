@@ -27,7 +27,7 @@ export const RichTextEditor: React.FC<Props> = ({ value, onChange, error }) => {
   // Sync editor content when value prop changes externally
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value);
     }
   }, [value, editor]);
 

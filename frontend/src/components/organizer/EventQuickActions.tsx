@@ -137,7 +137,6 @@ const EventQuickActions: React.FC<Props> = ({
           </Button>
 
           <Button
-            variant={confirmType === "cancel" ? "warning" : "destructive"}
             onClick={() => {
               if (confirmType === "cancel" && onCancel) onCancel();
               if (confirmType === "delete" && onDelete) onDelete();

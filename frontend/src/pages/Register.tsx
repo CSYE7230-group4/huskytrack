@@ -12,7 +12,7 @@ function getPasswordStrength(password: string): { label: string; color: string }
   if (/[0-9]/.test(password)) score++;
   if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
   if (/[A-Z]/.test(password)) score++;
-  
+
   if (score === 0) return { label: "Very weak", color: "bg-red-400" };
   if (score === 1) return { label: "Weak", color: "bg-orange-400" };
   if (score === 2) return { label: "Fair", color: "bg-yellow-400" };
@@ -21,7 +21,6 @@ function getPasswordStrength(password: string): { label: string; color: string }
 }
 
 export default function Register() {
-  // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +32,6 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Per-field errors
   const [errors, setErrors] = useState<{
     firstName?: string;
     lastName?: string;
@@ -41,25 +39,24 @@ export default function Register() {
     university?: string;
     password?: string;
     confirmPassword?: string;
-    submit?: string; // API errors
+    submit?: string;
   }>({});
 
   const { register } = useAuth();
   const navigate = useNavigate();
-  
+
   const passwordStrength = getPasswordStrength(password);
 
-  // Validation
   function validate(): boolean {
     const errs: typeof errors = {};
-    
+
     if (!firstName.trim()) errs.firstName = "First name is required";
     if (!lastName.trim()) errs.lastName = "Last name is required";
     if (!email.trim()) errs.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errs.email = "Invalid email format";
     }
-    
+
     if (!password) {
       errs.password = "Password is required";
     } else {
@@ -72,26 +69,23 @@ export default function Register() {
       else if (!/[A-Z]/.test(password))
         errs.password = "Password must contain an uppercase letter";
     }
-    
+
     if (!confirmPassword) {
       errs.confirmPassword = "Please confirm your password";
     } else if (confirmPassword !== password) {
       errs.confirmPassword = "Passwords do not match";
     }
-    
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    // Clear previous errors
     setErrors({});
-    
-    // Validate
+
     if (!validate()) return;
-    
+
     setIsSubmitting(true);
 
     try {
@@ -127,43 +121,58 @@ export default function Register() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            label="First name"
-            placeholder="First name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            error={errors.firstName}
-          />
-          <Input
-            label="Last name"
-            placeholder="Last name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            error={errors.lastName}
-          />
+          <div>
+            <Input
+              label="First name"
+              placeholder="First name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+            {errors.firstName && (
+              <p className="text-xs text-red-500 mt-1">{errors.firstName}</p>
+            )}
+          </div>
+
+          <div>
+            <Input
+              label="Last name"
+              placeholder="Last name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+            {errors.lastName && (
+              <p className="text-xs text-red-500 mt-1">{errors.lastName}</p>
+            )}
+          </div>
         </div>
 
-        <Input
-          label="Email"
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={errors.email}
-        />
-
-        <Input
-          label="University"
-          placeholder="Enter your university (optional)"
-          value={university}
-          onChange={(e) => setUniversity(e.target.value)}
-          error={errors.university}
-        />
+        <div>
+          <Input
+            label="Email"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {errors.email && (
+            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+          )}
+        </div>
 
         <div>
-          <label className="font-medium text-gray-700 mb-1 block">
-            Role
-          </label>
+          <Input
+            label="University"
+            placeholder="Enter your university (optional)"
+            value={university}
+            onChange={(e) => setUniversity(e.target.value)}
+          />
+          {errors.university && (
+            <p className="text-xs text-red-500 mt-1">{errors.university}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="font-medium text-gray-700 mb-1 block">Role</label>
           <select
             value={role}
             onChange={(e) =>
@@ -184,9 +193,11 @@ export default function Register() {
             placeholder="Create a strong password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
             className="pr-10"
           />
+          {errors.password && (
+            <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+          )}
           <button
             type="button"
             onClick={() => setShowPassword((p) => !p)}
@@ -224,7 +235,6 @@ export default function Register() {
           )}
         </div>
 
-        {/* Confirm Password with toggle */}
         <div className="relative">
           <Input
             label="Confirm Password"
@@ -232,9 +242,13 @@ export default function Register() {
             placeholder="Re-enter your password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            error={errors.confirmPassword}
             className="pr-10"
           />
+          {errors.confirmPassword && (
+            <p className="text-xs text-red-500 mt-1">
+              {errors.confirmPassword}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => setShowConfirmPassword((p) => !p)}
@@ -264,7 +278,7 @@ export default function Register() {
           Sign up
         </Button>
       </form>
-      
+
       <p className="mt-6 text-xs text-center text-gray-500">
         Existing user?{" "}
         <Link to="/auth/login" className="text-primary font-medium hover:underline">

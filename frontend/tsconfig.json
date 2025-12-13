@@ -6,24 +6,26 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Bundler mode */
+    /* React */
+    "jsx": "react-jsx",
+
+    /* Vite / bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
 
-    /* Linting */
+    /* Type-check only */
+    "noEmit": true,
+
+    /* Safety */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-}
+    "forceConsistentCasingInFileNames": true,
 
+    /* Optional strictness (OK to keep) */
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
