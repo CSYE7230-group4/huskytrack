@@ -496,7 +496,93 @@ class NotificationService {
   }
 }
 
+// Export wrapper functions for backward compatibility
+const sendWelcomeEmail = async ({ to, userName }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendWelcomeEmail({ to, userName });
+};
+
+const sendPasswordResetEmail = async ({ to, resetToken, userName }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendPasswordResetEmail({ to, resetToken, userName });
+};
+
+const sendPasswordChangedEmail = async ({ to, userName }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendPasswordChangedEmail({ to, userName });
+};
+
+const sendEventCancellationEmail = async ({ to, userName, eventName, eventDate, eventLocation, eventUrl, unsubscribeUrl }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendNotificationEmail({
+    to,
+    userName,
+    subject: `Event Cancelled: ${eventName}`,
+    type: 'EVENT_CANCELLED',
+    data: {
+      eventTitle: eventName,
+      reason: 'The organizer has cancelled this event.'
+    }
+  });
+};
+
+const sendEventUpdateEmail = async ({ to, userName, eventName, changes, eventUrl }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendNotificationEmail({
+    to,
+    userName,
+    subject: `Event Updated: ${eventName}`,
+    type: 'EVENT_UPDATED',
+    data: {
+      eventTitle: eventName,
+      changes,
+      eventUrl
+    }
+  });
+};
+
+const sendEventReminderEmail = async ({ to, userName, eventName, eventDate, eventLocation, eventUrl }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendNotificationEmail({
+    to,
+    userName,
+    subject: `Reminder: ${eventName}`,
+    type: 'EVENT_REMINDER',
+    data: {
+      eventTitle: eventName,
+      startDate: eventDate,
+      location: { name: eventLocation },
+      eventUrl
+    }
+  });
+};
+
+const sendRegistrationConfirmationEmail = async ({ to, userName, eventName, eventDate, eventLocation, eventUrl }) => {
+  const emailModule = require('../utils/email');
+  return await emailModule.sendNotificationEmail({
+    to,
+    userName,
+    subject: `Registration Confirmed: ${eventName}`,
+    type: 'REGISTRATION_CONFIRMED',
+    data: {
+      eventTitle: eventName,
+      startDate: eventDate,
+      location: { name: eventLocation },
+      eventUrl
+    }
+  });
+};
+
 module.exports = new NotificationService();
+
+// Export wrapper functions
+module.exports.sendWelcomeEmail = sendWelcomeEmail;
+module.exports.sendPasswordResetEmail = sendPasswordResetEmail;
+module.exports.sendPasswordChangedEmail = sendPasswordChangedEmail;
+module.exports.sendEventCancellationEmail = sendEventCancellationEmail;
+module.exports.sendEventUpdateEmail = sendEventUpdateEmail;
+module.exports.sendEventReminderEmail = sendEventReminderEmail;
+module.exports.sendRegistrationConfirmationEmail = sendRegistrationConfirmationEmail;
 
 
 

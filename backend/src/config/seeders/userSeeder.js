@@ -49,7 +49,52 @@ const testUsers = [
         email: 'bob.wilson@northeastern.edu',
         password: 'Password123!',
         university: 'Northeastern University',
-        role: 'ORGANIZER',
+        role: 'STUDENT',
+        isEmailVerified: true
+    },
+    {
+        firstName: 'Charlie',
+        lastName: 'Brown',
+        email: 'charlie.brown@northeastern.edu',
+        password: 'Password123!',
+        university: 'Northeastern University',
+        role: 'STUDENT',
+        isEmailVerified: true
+    },
+    {
+        firstName: 'Diana',
+        lastName: 'Martinez',
+        email: 'diana.martinez@northeastern.edu',
+        password: 'Password123!',
+        university: 'Northeastern University',
+        role: 'STUDENT',
+        isEmailVerified: true
+    },
+    {
+        firstName: 'Ethan',
+        lastName: 'Davis',
+        email: 'ethan.davis@northeastern.edu',
+        password: 'Password123!',
+        university: 'Northeastern University',
+        role: 'STUDENT',
+        isEmailVerified: true
+    },
+    {
+        firstName: 'Fiona',
+        lastName: 'Taylor',
+        email: 'fiona.taylor@northeastern.edu',
+        password: 'Password123!',
+        university: 'Northeastern University',
+        role: 'STUDENT',
+        isEmailVerified: true
+    },
+    {
+        firstName: 'George',
+        lastName: 'Anderson',
+        email: 'george.anderson@northeastern.edu',
+        password: 'Password123!',
+        university: 'Northeastern University',
+        role: 'STUDENT',
         isEmailVerified: true
     }
 ];

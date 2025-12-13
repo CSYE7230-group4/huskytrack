@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useState, useRef, useCallback } from "react";
 import { ToastItem, ToastType } from "./ToastTypes";
 
 type ToastContextType = {
@@ -11,20 +11,34 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const nextIdRef = useRef(1);
+  const timeoutsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
-  const showToast = (message: string, type: ToastType = "info") => {
-    setNextId((current) => {
-      const id = current;
-      setToasts((prev) => [...prev, { id, message, type }]);
-      setTimeout(() => removeToast(id), 3000);
-      return current + 1;
-    });
-  };
-
-  const removeToast = (id: number) => {
+  const removeToast = useCallback((id: number) => {
+    // Clear the timeout if it exists
+    const timeout = timeoutsRef.current.get(id);
+    if (timeout) {
+      clearTimeout(timeout);
+      timeoutsRef.current.delete(id);
+    }
+    
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
+
+  const showToast = useCallback((message: string, type: ToastType = "info") => {
+    const id = nextIdRef.current;
+    nextIdRef.current += 1;
+
+    // Add the toast
+    setToasts((prev) => [...prev, { id, message, type }]);
+
+    // Set up auto-dismiss timeout
+    const timeout = setTimeout(() => {
+      removeToast(id);
+    }, 3000);
+    
+    timeoutsRef.current.set(id, timeout);
+  }, [removeToast]);
 
   return (
     <ToastContext.Provider value={{ toasts, showToast, removeToast }}>

@@ -373,6 +373,9 @@ const sendNotificationEmail = async ({ to, userName, subject, type, data }) => {
         case 'REGISTRATION_CONFIRMED':
             emailContent = generateRegistrationConfirmedEmail(userName, data);
             break;
+        case 'REGISTRATION_WAITLISTED':
+            emailContent = generateWaitlistEmail(userName, data);
+            break;
         case 'EVENT_UPDATED':
             emailContent = generateEventUpdatedEmail(userName, data);
             break;
@@ -662,6 +665,85 @@ The HuskyTrack Team
         </div>
         
         <p>We apologize for any inconvenience. Please check HuskyTrack for other exciting events.</p>
+        
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center;">
+            This is an automated email from HuskyTrack. Please do not reply to this email.
+        </p>
+    </div>
+</body>
+</html>
+    `.trim();
+    
+    return { text, html };
+};
+
+/**
+ * Generate waitlist email (when user is added to waitlist)
+ */
+const generateWaitlistEmail = (userName, data) => {
+    const { eventTitle, startDate, location, waitlistPosition, eventUrl } = data;
+    const formattedDate = new Date(startDate).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    const text = `
+Hello ${userName},
+
+You've been added to the waitlist for:
+
+Event: ${eventTitle}
+Date & Time: ${formattedDate}
+Location: ${location?.name || 'TBD'}
+Waitlist Position: ${waitlistPosition}
+
+We'll notify you if a spot opens up!
+
+${eventUrl ? `View event details: ${eventUrl}` : ''}
+
+Best regards,
+The HuskyTrack Team
+    `.trim();
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px;">
+        <h2 style="color: #ffc107; margin-bottom: 20px;">Added to Waitlist</h2>
+        
+        <p>Hello ${userName},</p>
+        
+        <p>You've been added to the waitlist for:</p>
+        
+        <div style="background-color: white; padding: 20px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #c8102e;">${eventTitle}</h3>
+            <p style="margin: 10px 0;"><strong>Date & Time:</strong> ${formattedDate}</p>
+            <p style="margin: 10px 0;"><strong>Location:</strong> ${location?.name || 'TBD'}</p>
+            <p style="margin: 10px 0;"><strong>Waitlist Position:</strong> #${waitlistPosition}</p>
+        </div>
+        
+        <p style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            We'll notify you via email if a spot opens up!
+        </p>
+        
+        ${eventUrl ? `
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="${eventUrl}" style="background-color: #c8102e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                View Event Details
+            </a>
+        </div>
+        ` : ''}
         
         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
         
