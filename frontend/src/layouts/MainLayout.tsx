@@ -11,6 +11,7 @@ import { useNotifications } from "../hooks/useNotifications";
 import { NotificationProvider } from "../contexts/NotificationContext";
 import { useRef, useState, useEffect } from "react";
 import { Menu } from "lucide-react";
+import HuskyLogo from "../assets/NewLogoHuskyTrack.svg";
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
@@ -103,10 +104,10 @@ export default function MainLayout() {
                 </button>
               )}
               <img
-                src="src/assets/NewLogoHuskyTrack.svg"
-                alt="Husky logo"
-                className="h-10 w-auto"
-              />
+              src={HuskyLogo}
+              alt="Husky logo"
+              className="h-10 w-auto"
+            />
               <span className="text-xl font-semibold text-primary tracking-tight">
                 HuskyTrack
               </span>
