@@ -110,7 +110,7 @@ export default function SidebarLayout({ isOpen, onClose, onToggle }: SidebarLayo
 
         {/* Profile */}
         <NavLink
-          to="/app/profile"
+          to="/profile"
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
               isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"

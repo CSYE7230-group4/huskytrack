@@ -85,7 +85,7 @@ export default function MainLayout() {
         }`}>
 
         {/* Top Navbar */}
-        <header className="bg-white/90 backdrop-blur shadow-sm">
+        <header className="bg-white/90 backdrop-blur shadow-sm sticky top-0 z-50">
           <div className={`mx-auto flex items-center justify-between px-6 py-3 transition-all duration-300 ${
             isSidebarOpen ? 'max-w-6xl' : 'max-w-full'
           }`}>
@@ -130,7 +130,7 @@ export default function MainLayout() {
                 </NavLink> */}
 
                 {/* Notification Bell with Center */}
-                <div ref={bellRef} className="relative inline-block">
+                <div ref={bellRef} className="relative inline-block z-50">
                   <NotificationBell
                     unreadCount={unreadCount}
                     onClick={toggleNotificationCenter}

@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
-import { AuthProvider } from "../contexts/AuthContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import PrivateRoute from "../components/PrivateRoute";
 
 // Layouts
@@ -28,6 +28,21 @@ import CreateEvent from "../pages/CreateEvent";
 import EditEvent from "../pages/EditEvent";
 
 import OrganizerDashboard from "../pages/OrganizerDashboard";
+
+// Component to handle profile redirect based on auth status
+function ProfileRedirect() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return null; // or a loading spinner if desired
+  }
+  
+  if (isAuthenticated) {
+    return <Navigate to="/app/profile" replace />;
+  }
+  
+  return <Navigate to="/auth/login" state={{ from: '/profile' }} replace />;
+}
 
 const router = createBrowserRouter([
   // ---------------------------------------
@@ -92,7 +107,7 @@ const router = createBrowserRouter([
   // ---------------------------------------
   {
     path: "/profile",
-    element: <Navigate to="/app/profile" replace />,
+    element: <ProfileRedirect />,
   },
 
   // ---------------------------------------
